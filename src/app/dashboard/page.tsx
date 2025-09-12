@@ -3,8 +3,15 @@
 import { supabase } from "@/lib/supabaseClient";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faTrash } from "@fortawesome/free-solid-svg-icons";
 
-type Reading = { datetime_utc: string; mgdl: number; tag: string | null };
+type Reading = {
+  id: string; // ← needed for deletion
+  datetime_utc: string;
+  mgdl: number;
+  tag: string | null;
+};
 
 function mean(nums: number[]) {
   return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : NaN;
@@ -13,8 +20,8 @@ function format(n: number, d = 1) {
   return Number.isFinite(n) ? n.toFixed(d) : "—";
 }
 function estA1cFromMean(mgdl: number) {
-  return (mgdl + 46.7) / 28.7;
-} // NGSP/DCCT
+  return (mgdl + 46.7) / 28.7; // NGSP/DCCT
+}
 
 export default function Dashboard() {
   const router = useRouter();
@@ -24,6 +31,7 @@ export default function Dashboard() {
   const [readings, setReadings] = useState<Reading[]>([]);
   const [rangeDays, setRangeDays] = useState<30 | 60 | 90 | 180 | 365 | 0>(90);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -65,10 +73,37 @@ export default function Dashboard() {
   async function fetchReadings(pid: string) {
     const { data, error } = await supabase
       .from("glucose_readings")
-      .select("datetime_utc, mgdl, tag")
+      .select("id, datetime_utc, mgdl, tag") // ← include id
       .eq("patient_id", pid)
       .order("datetime_utc", { ascending: false });
     if (!error && data) setReadings(data as any);
+  }
+
+  async function deleteReading(id: string) {
+    if (!patientId) return;
+    if (!confirm("Delete this reading? This cannot be undone.")) return;
+
+    setDeleting((s) => ({ ...s, [id]: true }));
+    const { error } = await supabase
+      .from("glucose_readings")
+      .delete()
+      .match({ id, patient_id: patientId });
+
+    if (error) {
+      alert(error.message);
+      setDeleting((s) => {
+        const { [id]: _, ...rest } = s;
+        return rest;
+      });
+      return;
+    }
+
+    // Optimistically update UI
+    setReadings((prev) => prev.filter((r) => r.id !== id));
+    setDeleting((s) => {
+      const { [id]: _, ...rest } = s;
+      return rest;
+    });
   }
 
   const filtered = useMemo(() => {
@@ -156,12 +191,13 @@ export default function Dashboard() {
                   <th className="px-4 py-2">Date / time</th>
                   <th className="px-4 py-2">mg/dL</th>
                   <th className="px-4 py-2">Tag</th>
+                  <th className="px-4 py-2"></th> {/* actions */}
                 </tr>
               </thead>
               <tbody className="[&_tr:hover]:bg-slate-50/60">
                 {loading && (
                   <tr>
-                    <td className="px-4 py-8 text-slate-500" colSpan={3}>
+                    <td className="px-4 py-8 text-slate-500" colSpan={4}>
                       Loading…
                     </td>
                   </tr>
@@ -170,18 +206,15 @@ export default function Dashboard() {
                   <tr>
                     <td
                       className="px-4 py-10 text-center text-slate-500"
-                      colSpan={3}
+                      colSpan={4}
                     >
                       No readings yet.
                     </td>
                   </tr>
                 )}
                 {!loading &&
-                  filtered.map((r, i) => (
-                    <tr
-                      key={`${r.datetime_utc}-${i}`}
-                      className="border-b last:border-0"
-                    >
+                  filtered.map((r) => (
+                    <tr key={r.id} className="border-b last:border-0">
                       <td className="px-4 py-2">
                         {new Date(r.datetime_utc).toLocaleString()}
                       </td>
@@ -195,6 +228,17 @@ export default function Dashboard() {
                           "—"
                         )}
                       </td>
+                      <td className="px-4 py-2">
+                        <button
+                          onClick={() => deleteReading(r.id)}
+                          disabled={!!deleting[r.id]}
+                          className="flex items-center gap-1 rounded-lg border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50 disabled:opacity-60"
+                          title="Delete reading"
+                        >
+                          <FontAwesomeIcon icon={faTrash} />
+                          {deleting[r.id] ? "Deleting…" : "Delete"}
+                        </button>
+                      </td>
                     </tr>
                   ))}
               </tbody>
@@ -202,7 +246,7 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* Optional notes card to match theme */}
+        {/* Optional notes card */}
         <section className="mt-4 rounded-2xl bg-white p-4 text-sm text-slate-600 shadow-sm ring-1 ring-slate-200/60">
           <div className="font-medium text-slate-800">Note</div>
           <p className="mt-2">
