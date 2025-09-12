@@ -3,7 +3,12 @@ import { createServerClient } from "@supabase/ssr";
 import type { CookieOptions } from "@supabase/ssr";
 
 export function createClient() {
-  const cookieStore = cookies();
+  // In Next 15, cookies() may be typed as Promise<ReadonlyRequestCookies> in some contexts.
+  // We adapt it defensively and keep types happy.
+  const cookieStore = cookies() as unknown as {
+    get?: (name: string) => { value?: string } | undefined;
+    set?: (opts: { name: string; value: string } & CookieOptions) => void;
+  };
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -11,13 +16,27 @@ export function createClient() {
     {
       cookies: {
         get(name: string) {
-          return cookieStore.get(name)?.value;
+          // Works in both RSC (read-only) and Server Actions/Routes.
+          try {
+            return cookieStore?.get?.(name)?.value;
+          } catch {
+            return undefined;
+          }
         },
         set(name: string, value: string, options: CookieOptions) {
-          cookieStore.set({ name, value, ...options });
+          // In RSC, .set is not available; in Actions/Routes it is.
+          try {
+            cookieStore?.set?.({ name, value, ...options });
+          } catch {
+            /* no-op in read-only contexts */
+          }
         },
         remove(name: string, options: CookieOptions) {
-          cookieStore.set({ name, value: "", ...options });
+          try {
+            cookieStore?.set?.({ name, value: "", ...options });
+          } catch {
+            /* no-op in read-only contexts */
+          }
         },
       },
     }
