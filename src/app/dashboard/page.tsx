@@ -1,4 +1,5 @@
 "use client";
+
 import { supabase } from "@/lib/supabaseClient";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -21,7 +22,8 @@ export default function Dashboard() {
   const [patientCode, setPatientCode] = useState<string | null>(null);
   const [name, setName] = useState<string>("");
   const [readings, setReadings] = useState<Reading[]>([]);
-  const [rangeDays, setRangeDays] = useState<30 | 60 | 90 | 180 | 365 | 0>(90); // 0=all
+  const [rangeDays, setRangeDays] = useState<30 | 60 | 90 | 180 | 365 | 0>(90);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -56,16 +58,16 @@ export default function Dashboard() {
       setName(d?.full_name ?? "");
 
       await fetchReadings(p.id);
+      setLoading(false);
     })();
   }, [router]);
 
   async function fetchReadings(pid: string) {
-    let q = supabase
+    const { data, error } = await supabase
       .from("glucose_readings")
       .select("datetime_utc, mgdl, tag")
       .eq("patient_id", pid)
       .order("datetime_utc", { ascending: false });
-    const { data, error } = await q;
     if (!error && data) setReadings(data as any);
   }
 
@@ -79,101 +81,148 @@ export default function Dashboard() {
   const a1c = useMemo(() => estA1cFromMean(meanMgdl), [meanMgdl]);
 
   return (
-    <main className="mx-auto max-w-5xl p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">
-            Welcome{name ? `, ${name}` : ""}
-          </h1>
-          <p className="text-sm text-slate-600">
-            Patient ID: <span className="font-mono">{patientCode ?? "—"}</span>
-          </p>
-        </div>
-        <button
-          onClick={() => router.push("/add-sugar")}
-          className="rounded-xl bg-[#00b78b] px-4 py-2 font-semibold text-white"
-        >
-          Add Sugar
-        </button>
-      </div>
+    <div className="min-h-screen bg-[#f5f7fb]">
+      <main className="mx-auto max-w-7xl px-4 py-6">
+        {/* Header / Profile card */}
+        <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-slate-900">
+                Welcome{name ? `, ${name}` : ""}
+              </h1>
+              <p className="mt-1 text-sm text-slate-600">
+                Patient ID:{" "}
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-700">
+                  {patientCode ?? "—"}
+                </span>
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => router.push("/add-sugar")}
+                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+              >
+                Add Sugar
+              </button>
+            </div>
+          </div>
 
-      <section className="mt-6 grid gap-4 md:grid-cols-3">
-        <KPI title="Estimated HbA1c" value={`${format(a1c, 1)}%`} />
-        <KPI title="Mean glucose (mg/dL)" value={format(meanMgdl, 0)} />
-        <KPI title="Readings in range" value={String(filtered.length)} />
-      </section>
+          {/* KPI row */}
+          <div className="mt-5 grid gap-4 sm:grid-cols-3">
+            <KPI title="Estimated HbA1c (%)" value={format(a1c, 1)} />
+            <KPI title="Mean glucose (mg/dL)" value={format(meanMgdl, 0)} />
+            <KPI title="Readings in range" value={String(filtered.length)} />
+          </div>
+        </section>
 
-      <section className="mt-6 rounded-2xl border p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-slate-600">Date range:</span>
-          {[30, 60, 90, 180, 365].map((d) => (
-            <button
-              key={d}
-              onClick={() => setRangeDays(d as any)}
-              className={`rounded-full border px-3 py-1 text-sm ${
-                rangeDays === d
-                  ? "border-[#00b78b] bg-[#00b78b]/10"
-                  : "border-slate-300"
-              }`}
-            >
-              {d}d
-            </button>
-          ))}
-          <button
-            onClick={() => setRangeDays(0)}
-            className={`rounded-full border px-3 py-1 text-sm ${
-              rangeDays === 0
-                ? "border-[#00b78b] bg-[#00b78b]/10"
-                : "border-slate-300"
-            }`}
-          >
-            all
-          </button>
-        </div>
-
-        <div className="mt-4 overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead>
-              <tr className="border-b bg-slate-50">
-                <th className="px-3 py-2">Date/time</th>
-                <th className="px-3 py-2">mg/dL</th>
-                <th className="px-3 py-2">Tag</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((r, i) => (
-                <tr key={i} className="border-b last:border-0">
-                  <td className="px-3 py-2">
-                    {new Date(r.datetime_utc).toLocaleString()}
-                  </td>
-                  <td className="px-3 py-2">{r.mgdl}</td>
-                  <td className="px-3 py-2">{r.tag ?? "—"}</td>
-                </tr>
+        {/* Readings list with range chips */}
+        <section className="mt-6 rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/60">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-slate-50/60 px-4 py-3">
+            <div className="text-sm font-medium text-slate-800">
+              Saved readings
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-slate-600">Date range:</span>
+              {[30, 60, 90, 180, 365].map((d) => (
+                <button
+                  key={d}
+                  onClick={() => setRangeDays(d as any)}
+                  className={`rounded-full px-3 py-1 ring-1 transition ${
+                    rangeDays === d
+                      ? "bg-blue-600 text-white ring-blue-600"
+                      : "bg-white text-slate-700 ring-slate-300 hover:bg-slate-50"
+                  }`}
+                >
+                  {d}d
+                </button>
               ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td className="px-3 py-8 text-slate-500" colSpan={3}>
-                    No readings yet.
-                  </td>
+              <button
+                onClick={() => setRangeDays(0)}
+                className={`rounded-full px-3 py-1 ring-1 transition ${
+                  rangeDays === 0
+                    ? "bg-blue-600 text-white ring-blue-600"
+                    : "bg-white text-slate-700 ring-slate-300 hover:bg-slate-50"
+                }`}
+              >
+                all
+              </button>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
+              <thead>
+                <tr className="border-b bg-white/50 text-slate-700">
+                  <th className="px-4 py-2">Date / time</th>
+                  <th className="px-4 py-2">mg/dL</th>
+                  <th className="px-4 py-2">Tag</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </main>
+              </thead>
+              <tbody className="[&_tr:hover]:bg-slate-50/60">
+                {loading && (
+                  <tr>
+                    <td className="px-4 py-8 text-slate-500" colSpan={3}>
+                      Loading…
+                    </td>
+                  </tr>
+                )}
+                {!loading && filtered.length === 0 && (
+                  <tr>
+                    <td
+                      className="px-4 py-10 text-center text-slate-500"
+                      colSpan={3}
+                    >
+                      No readings yet.
+                    </td>
+                  </tr>
+                )}
+                {!loading &&
+                  filtered.map((r, i) => (
+                    <tr
+                      key={`${r.datetime_utc}-${i}`}
+                      className="border-b last:border-0"
+                    >
+                      <td className="px-4 py-2">
+                        {new Date(r.datetime_utc).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-2 tabular-nums">{r.mgdl}</td>
+                      <td className="px-4 py-2">
+                        {r.tag ? (
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
+                            {r.tag}
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* Optional notes card to match theme */}
+        <section className="mt-4 rounded-2xl bg-white p-4 text-sm text-slate-600 shadow-sm ring-1 ring-slate-200/60">
+          <div className="font-medium text-slate-800">Note</div>
+          <p className="mt-2">
+            HbA1c shown here is an estimate derived from your mean glucose over
+            the selected range and may differ from lab results.
+          </p>
+        </section>
+      </main>
+    </div>
   );
 }
 
 function KPI({ title, value }: { title: string; value: string }) {
   return (
-    <div
-      className="rounded-2xl bg-white p-[1px] shadow"
-      style={{ background: "linear-gradient(135deg,#00b78b,#F78300)" }}
-    >
+    <div className="rounded-2xl bg-white p-[1px] shadow-sm ring-1 ring-slate-200/60">
       <div className="rounded-2xl bg-white p-4">
         <div className="text-xs text-slate-600">{title}</div>
-        <div className="mt-1 text-2xl font-semibold tabular-nums">{value}</div>
+        <div className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">
+          {value}
+        </div>
       </div>
     </div>
   );

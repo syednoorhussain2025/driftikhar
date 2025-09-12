@@ -10,6 +10,7 @@ import {
   faUserShield,
   faUser,
   faChevronDown,
+  faHouse, // ← NEW: Home icon
 } from "@fortawesome/free-solid-svg-icons";
 
 export default function Header() {
@@ -83,22 +84,34 @@ export default function Header() {
 
         {/* Right: Actions */}
         <div className="flex items-center gap-3">
-          {/* Add Sugar button (signed in only) */}
+          {/* Home (always visible) */}
+          <button
+            onClick={() => router.push("/")}
+            className="flex items-center gap-1 rounded-xl border px-3 py-1.5 text-sm text-slate-800 hover:bg-slate-50"
+            title="Home"
+          >
+            <FontAwesomeIcon icon={faHouse} />
+            <span className="hidden sm:inline">Home</span>
+          </button>
+
+          {/* Add Sugar (signed in only) */}
           {email && (
             <button
               onClick={() => router.push("/add-sugar")}
               className="flex items-center gap-1 rounded-xl bg-[#00b78b] px-3 py-1.5 text-sm font-semibold text-white shadow hover:opacity-95"
+              title="Quick add sugar reading"
             >
               <FontAwesomeIcon icon={faPlusCircle} />
               <span className="hidden sm:inline">Add Sugar</span>
             </button>
           )}
 
-          {/* Admin link (only admins) */}
+          {/* Admin (only admins) */}
           {email && role === "admin" && (
             <button
               onClick={() => router.push("/admin")}
               className="flex items-center gap-1 rounded-xl bg-[#F78300] px-3 py-1.5 text-sm font-semibold text-white shadow hover:opacity-95"
+              title="Admin"
             >
               <FontAwesomeIcon icon={faUserShield} />
               <span className="hidden sm:inline">Admin</span>
@@ -113,6 +126,8 @@ export default function Header() {
               <button
                 onClick={() => setMenuOpen((v) => !v)}
                 className="flex items-center gap-2 rounded-xl border px-3 py-1.5 text-sm hover:bg-slate-50"
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
               >
                 <FontAwesomeIcon icon={faUser} />
                 <span className="hidden max-w-[160px] truncate sm:inline">
@@ -127,13 +142,17 @@ export default function Header() {
               </button>
 
               {menuOpen && (
-                <div className="absolute right-0 mt-2 w-48 overflow-hidden rounded-xl border bg-white shadow-lg">
+                <div
+                  role="menu"
+                  className="absolute right-0 mt-2 w-48 overflow-hidden rounded-xl border bg-white shadow-lg"
+                >
                   <button
                     onClick={() => {
                       setMenuOpen(false);
                       router.push("/dashboard");
                     }}
                     className="block w-full px-4 py-2 text-left text-sm hover:bg-slate-50"
+                    role="menuitem"
                   >
                     My Dashboard
                   </button>
@@ -143,6 +162,7 @@ export default function Header() {
                       handleSignOut();
                     }}
                     className="block w-full px-4 py-2 text-left text-sm text-red-700 hover:bg-red-50"
+                    role="menuitem"
                   >
                     Logout
                   </button>
