@@ -3,15 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faPlusCircle,
-  faUserShield,
-  faUser,
-  faChevronDown,
-  faHouse, // ← NEW: Home icon
-} from "@fortawesome/free-solid-svg-icons";
+import { supabase } from "@/lib/supabaseClient"; // ← use your configured client
 
 export default function Header() {
   const router = useRouter();
@@ -24,25 +16,30 @@ export default function Header() {
     let mounted = true;
 
     async function init() {
-      const { data } = await supabase.auth.getSession();
-      if (!mounted) return;
-      const user = data.session?.user ?? null;
-      setEmail(user?.email ?? null);
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (!mounted) return;
 
-      if (user) {
-        const { data: prof } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("user_id", user.id)
-          .maybeSingle();
-        setRole(prof?.role as any);
+        const user = data.session?.user ?? null;
+        setEmail(user?.email ?? null);
+
+        if (user) {
+          const { data: prof } = await supabase
+            .from("profiles")
+            .select("role")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          setRole((prof?.role as any) ?? null);
+        }
+      } finally {
+        if (mounted) setLoading(false);
       }
-
-      setLoading(false);
     }
     init();
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setEmail(session?.user?.email ?? null);
       if (session?.user) {
         supabase
@@ -50,7 +47,7 @@ export default function Header() {
           .select("role")
           .eq("user_id", session.user.id)
           .maybeSingle()
-          .then((res) => setRole(res.data?.role as any));
+          .then((res) => setRole((res.data?.role as any) ?? null));
       } else {
         setRole(null);
       }
@@ -58,7 +55,7 @@ export default function Header() {
 
     return () => {
       mounted = false;
-      sub.subscription.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
@@ -77,9 +74,9 @@ export default function Header() {
         {/* Left: Logo */}
         <Link
           href="/"
-          className="select-none text-sm font-bold tracking-tight text-slate-900 hover:opacity-90"
+          className="select-none text-xl font-bold tracking-tight text-blue-700 hover:text-blue-800"
         >
-          Dr Iftikhikar&apos;s Clinic
+          Dr Iftikhar&apos;s Clinic
         </Link>
 
         {/* Right: Actions */}
@@ -87,10 +84,10 @@ export default function Header() {
           {/* Home (always visible) */}
           <button
             onClick={() => router.push("/")}
-            className="flex items-center gap-1 rounded-xl border px-3 py-1.5 text-sm text-slate-800 hover:bg-slate-50"
+            className="flex items-center gap-1 rounded-xl border border-blue-700 px-3 py-1.5 text-sm text-blue-700 hover:bg-blue-50"
             title="Home"
           >
-            <FontAwesomeIcon icon={faHouse} />
+            <i className="fas fa-house mr-1" />
             <span className="hidden sm:inline">Home</span>
           </button>
 
@@ -98,10 +95,10 @@ export default function Header() {
           {email && (
             <button
               onClick={() => router.push("/add-sugar")}
-              className="flex items-center gap-1 rounded-xl bg-[#00b78b] px-3 py-1.5 text-sm font-semibold text-white shadow hover:opacity-95"
+              className="flex items-center gap-1 rounded-xl bg-blue-700 px-3 py-1.5 text-sm font-semibold text-white shadow hover:bg-blue-800"
               title="Quick add sugar reading"
             >
-              <FontAwesomeIcon icon={faPlusCircle} />
+              <i className="fas fa-plus-circle mr-1" />
               <span className="hidden sm:inline">Add Sugar</span>
             </button>
           )}
@@ -110,10 +107,10 @@ export default function Header() {
           {email && role === "admin" && (
             <button
               onClick={() => router.push("/admin")}
-              className="flex items-center gap-1 rounded-xl bg-[#F78300] px-3 py-1.5 text-sm font-semibold text-white shadow hover:opacity-95"
+              className="flex items-center gap-1 rounded-xl bg-blue-700 px-3 py-1.5 text-sm font-semibold text-white shadow hover:bg-blue-800"
               title="Admin"
             >
-              <FontAwesomeIcon icon={faUserShield} />
+              <i className="fas fa-user-shield mr-1" />
               <span className="hidden sm:inline">Admin</span>
             </button>
           )}
@@ -125,17 +122,16 @@ export default function Header() {
             <div className="relative">
               <button
                 onClick={() => setMenuOpen((v) => !v)}
-                className="flex items-center gap-2 rounded-xl border px-3 py-1.5 text-sm hover:bg-slate-50"
+                className="flex items-center gap-2 rounded-xl border border-blue-700 px-3 py-1.5 text-sm text-blue-700 hover:bg-blue-50"
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
               >
-                <FontAwesomeIcon icon={faUser} />
+                <i className="fas fa-user" />
                 <span className="hidden max-w-[160px] truncate sm:inline">
                   {email}
                 </span>
-                <FontAwesomeIcon
-                  icon={faChevronDown}
-                  className={`transition-transform ${
+                <i
+                  className={`fas fa-chevron-down transition-transform ${
                     menuOpen ? "rotate-180" : ""
                   }`}
                 />
@@ -172,7 +168,7 @@ export default function Header() {
           ) : (
             <button
               onClick={handleSignIn}
-              className="rounded-xl border px-3 py-1.5 text-sm hover:bg-slate-50"
+              className="rounded-xl bg-blue-700 px-3 py-1.5 text-sm font-semibold text-white shadow hover:bg-blue-800"
             >
               Sign in
             </button>

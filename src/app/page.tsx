@@ -10,7 +10,7 @@ export default function Home() {
   const [pw, setPw] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const app = process.env.NEXT_PUBLIC_APP_NAME || "Dr Iftikhikar's Clinic";
+  const app = process.env.NEXT_PUBLIC_APP_NAME || "Dr Iftikhar's Clinic";
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -55,11 +55,15 @@ export default function Home() {
           {/* Left: Medical photo (hidden on small screens) */}
           <div className="relative hidden lg:block">
             <img
-              src="/images/medical-hero.jpg"
+              /* Supabase image transform: 600px wide, low quality */
+              src="https://mnlnbuosiczjalpgeara.supabase.co/storage/v1/render/image/public/images/medical.png?width=600&quality=60"
               alt="Doctor reviewing a patient's chart"
+              width={600}
+              height={450}
+              loading="lazy"
+              decoding="async"
               className="h-full w-full object-cover"
             />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-black/10 via-transparent to-transparent" />
           </div>
 
           {/* Right: Sign-in form */}
