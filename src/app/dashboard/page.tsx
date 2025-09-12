@@ -7,7 +7,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrash } from "@fortawesome/free-solid-svg-icons";
 
 type Reading = {
-  id: string; // ← needed for deletion
+  id: string;
   datetime_utc: string;
   mgdl: number;
   tag: string | null;
@@ -73,7 +73,7 @@ export default function Dashboard() {
   async function fetchReadings(pid: string) {
     const { data, error } = await supabase
       .from("glucose_readings")
-      .select("id, datetime_utc, mgdl, tag") // ← include id
+      .select("id, datetime_utc, mgdl, tag")
       .eq("patient_id", pid)
       .order("datetime_utc", { ascending: false });
     if (!error && data) setReadings(data as any);
@@ -98,7 +98,6 @@ export default function Dashboard() {
       return;
     }
 
-    // Optimistically update UI
     setReadings((prev) => prev.filter((r) => r.id !== id));
     setDeleting((s) => {
       const { [id]: _, ...rest } = s;
@@ -191,7 +190,9 @@ export default function Dashboard() {
                   <th className="px-4 py-2">Date / time</th>
                   <th className="px-4 py-2">mg/dL</th>
                   <th className="px-4 py-2">Tag</th>
-                  <th className="px-4 py-2"></th> {/* actions */}
+                  <th className="px-4 py-2">
+                    <span className="sr-only">Actions</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="[&_tr:hover]:bg-slate-50/60">

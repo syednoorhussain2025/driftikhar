@@ -1,9 +1,14 @@
-// src/app/layout.tsx
-import "@/lib/fontawesome"; // add this line at top
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Header from "@/components/Header";
+import "@/lib/fontawesome"; // keep if you previously had this global setup
+
+import ClientOnlyHeader from "@/components/ClientOnlyHeader";
+
+export const metadata: Metadata = {
+  title: "Dr Iftikhar",
+  description: "Health records and dashboard",
+};
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,22 +20,15 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Dr Iftikhikar's Clinic",
-  description: "Patient record management for diabetes",
-};
-
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Header />
+        <ClientOnlyHeader />
         <main>{children}</main>
       </body>
     </html>
