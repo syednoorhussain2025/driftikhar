@@ -1,7 +1,7 @@
 "use client";
 
 import { PatientProvider } from "./_context/PatientContext";
-import Sidebar from "./_components/Sidebar";
+import Sidebar from "@/components/Sidebar";
 
 export default function DashboardLayout({
   children,
