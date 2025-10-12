@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faBars } from "@fortawesome/free-solid-svg-icons";
 
 const STETHO_SVG =
   "https://mnlnbuosiczjalpgeara.supabase.co/storage/v1/object/public/icons/stethoscope-solid-full.svg";
@@ -101,9 +103,10 @@ export default function Header({
                 aria-label="Open menu"
                 onClick={onOpenSidebar}
               >
-                <span className="block w-5 border-t-2 border-slate-700" />
-                <span className="block w-5 border-t-2 border-slate-700 mt-1.5" />
-                <span className="block w-5 border-t-2 border-slate-700 mt-1.5" />
+                <FontAwesomeIcon
+                  icon={faBars}
+                  className="text-[var(--brand-blue,#1e3a8a)] text-lg"
+                />
               </button>
             )}
 
