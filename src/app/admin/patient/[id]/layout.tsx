@@ -45,19 +45,31 @@ export default function AdminPatientLayout({
   useEffect(() => {
     (async () => {
       setLoading(true);
-      // load basic shell info (patient_code, name, city)
-      const { data: p1 } = await supabase
+
+      const { data: p1, error } = await supabase
         .from("patients")
         .select("id, patient_code, patient_demographics(full_name, city)")
         .eq("id", patientId)
         .maybeSingle();
 
+      if (error) {
+        console.error(error);
+        setPatient(null);
+        setLoading(false);
+        return;
+      }
+
       if (p1) {
+        // Normalize nested relation which can be array or single object
+        const pd = Array.isArray((p1 as any).patient_demographics)
+          ? (p1 as any).patient_demographics[0]
+          : (p1 as any).patient_demographics;
+
         setPatient({
-          id: p1.id,
-          patient_code: p1.patient_code,
-          full_name: p1.patient_demographics?.full_name ?? null,
-          city: p1.patient_demographics?.city ?? null,
+          id: (p1 as any).id,
+          patient_code: (p1 as any).patient_code,
+          full_name: pd?.full_name ?? null,
+          city: pd?.city ?? null,
         });
       } else {
         setPatient(null);
