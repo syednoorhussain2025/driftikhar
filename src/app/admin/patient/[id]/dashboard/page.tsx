@@ -1,6 +1,7 @@
-// src/app/dashboard/page.tsx
+// src/app/admin/patients/[id]/dashboard/page.tsx
 "use client";
 
+import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -18,10 +19,9 @@ import {
   faShuffle,
   faArrowUpRightFromSquare,
 } from "@fortawesome/free-solid-svg-icons";
-import { usePatient } from "./_context/PatientContext";
+import { supabase } from "@/lib/supabaseClient";
 import AddSugarModal from "@/components/AddSugarModal";
-import AddBPModal from "@/components/AddBPModal"; // ✅ BP modal
-import { supabase } from "@/lib/supabaseClient"; // ✅ for fetching BP readings
+import AddBPModal from "@/components/AddBPModal";
 import {
   LineChart,
   Line,
@@ -35,8 +35,9 @@ import {
   ReferenceLine,
 } from "recharts";
 
-/* ----------------------------- Utils ----------------------------- */
-
+/* ------------------------------------------------------------------ */
+/* ----------------------- Utility helpers -------------------------- */
+/* ------------------------------------------------------------------ */
 function mean(nums: number[]) {
   return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : NaN;
 }
@@ -60,7 +61,6 @@ const tooltipDate = new Intl.DateTimeFormat(undefined, {
   minute: "2-digit",
   hour12: false,
 }).format;
-
 const shortDate = new Intl.DateTimeFormat(undefined, {
   month: "short",
   day: "2-digit",
@@ -71,7 +71,69 @@ function titleCase(s?: string | null) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-/* ----------------------------- Types & UI ----------------------------- */
+/* ------------------------------------------------------------------ */
+/* -------------------------- Admin Hook ---------------------------- */
+/* ------------------------------------------------------------------ */
+function useAdminPatient(patientId: string) {
+  const [demographics, setDemographics] = useState<any>({});
+  const [readings, setReadings] = useState<any[]>([]);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function fetchAll() {
+    try {
+      setLoading(true);
+      const { data: demo } = await supabase
+        .from("patient_demographics")
+        .select("*")
+        .eq("patient_id", patientId)
+        .maybeSingle();
+      setDemographics(demo ?? {});
+
+      const { data: r, error } = await supabase
+        .from("glucose_readings")
+        .select("id, datetime_utc, mgdl, tag, note")
+        .eq("patient_id", patientId)
+        .order("datetime_utc", { ascending: false });
+      if (error) throw error;
+      setReadings(r ?? []);
+      setErrorMsg(null);
+    } catch (err: any) {
+      setErrorMsg(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (patientId) fetchAll();
+  }, [patientId]);
+
+  return {
+    demographics,
+    readings,
+    loading,
+    errorMsg,
+    refreshReadings: fetchAll,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* --------------------------- Page -------------------------------- */
+/* ------------------------------------------------------------------ */
+
+const MALE_AVATAR =
+  "https://mnlnbuosiczjalpgeara.supabase.co/storage/v1/object/public/images/male%20profile.png";
+const FEMALE_AVATAR =
+  "https://mnlnbuosiczjalpgeara.supabase.co/storage/v1/object/public/images/female%20profile.png";
+
+type BP = {
+  id: string;
+  patient_id: string;
+  datetime_utc: string;
+  systolic: number;
+  diastolic: number;
+};
 
 type UiType =
   | "all"
@@ -90,8 +152,6 @@ const UI_TYPES: { value: UiType; label: string; icon: any }[] = [
   { value: "random", label: "Random", icon: faShuffle },
 ];
 
-/* ------------------------ Styled chart tooltip ------------------------ */
-
 function tooltipColorClasses(val?: number) {
   if (!Number.isFinite(val))
     return {
@@ -100,7 +160,7 @@ function tooltipColorClasses(val?: number) {
       meta: "text-white/85",
       label: "Unknown",
     };
-  if ((val as number) < 5.7)
+  if (val! < 5.7)
     return {
       wrap: "bg-emerald-400/85 text-white ring-emerald-500/50",
       status: "bg-white/25 text-white",
@@ -111,31 +171,25 @@ function tooltipColorClasses(val?: number) {
     wrap: "bg-red-500/85 text-white ring-red-600/50",
     status: "bg-white/25 text-white",
     meta: "text-white/90",
-    label: (val as number) < 6.5 ? "High (Prediabetes)" : "High (Diabetes)",
+    label: val! < 6.5 ? "High (Prediabetes)" : "High (Diabetes)",
   };
 }
 
 function A1cTooltip({ active, payload, label }: any) {
-  if (!active || !payload || !payload.length) return null;
-  const first = Array.isArray(payload)
-    ? payload.find((p: any) => Number.isFinite(p?.value))
-    : undefined;
+  if (!active || !payload?.length) return null;
+  const first = payload.find((p: any) => Number.isFinite(p?.value));
   const val = first?.value as number | undefined;
   const d = new Date(label);
   const c = tooltipColorClasses(val);
 
   return (
-    <div className={`max-w-[260px] rounded-xl p-3 shadow-lg ring-1 ${c.wrap}`}>
+    <div className={`max-w=[260px] rounded-xl p-3 shadow-lg ring-1 ${c.wrap}`}>
       <div className="text-xs">{tooltipDate(d)}</div>
       <div className="mt-2 flex items-center gap-2">
-        <span
-          className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${c.status}`}
-        >
+        <span className={`rounded-full px-2 py-0.5 text-[11px] ${c.status}`}>
           Est. HbA1c
         </span>
-        <span
-          className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${c.status}`}
-        >
+        <span className={`rounded-full px-2 py-0.5 text-[11px] ${c.status}`}>
           {c.label}
         </span>
       </div>
@@ -149,52 +203,31 @@ function A1cTooltip({ active, payload, label }: any) {
   );
 }
 
-/* =============================== Page =============================== */
+/* ------------------------------- Main ------------------------------ */
 
-const MALE_AVATAR =
-  "https://mnlnbuosiczjalpgeara.supabase.co/storage/v1/object/public/images/male%20profile.png";
-const FEMALE_AVATAR =
-  "https://mnlnbuosiczjalpgeara.supabase.co/storage/v1/object/public/images/female%20profile.png";
-
-type BP = {
-  id: string;
-  patient_id: string;
-  datetime_utc: string;
-  systolic: number;
-  diastolic: number;
-};
-
-export default function DashboardPage() {
-  const {
-    name,
-    patientCode,
-    patientId,
-    readings,
-    errorMsg,
-    refreshReadings,
-    demographics,
-  } = usePatient();
+export default function AdminPatientDashboard() {
+  const { id: patientId } = useParams<{ id: string }>();
+  const { demographics, readings, errorMsg, refreshReadings } =
+    useAdminPatient(patientId);
 
   const [showAdd, setShowAdd] = useState(false);
-  const [showAddBP, setShowAddBP] = useState(false); // ✅ BP modal state
+  const [showAddBP, setShowAddBP] = useState(false);
 
-  // Defaults: last 90 days, and UI type = all
+  // Time + Type selectors (replicated 1:1)
   const [rangeDays, setRangeDays] = useState<30 | 60 | 90 | 180 | 365 | 0>(90);
   const [type, setType] = useState<UiType>("all");
 
-  // Custom dates
+  // Custom date range
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [showCustom, setShowCustom] = useState<boolean>(false);
   const usingCustom = Boolean(startDate && endDate);
 
-  // Avatar selection (default to male)
   const avatarUrl = useMemo(() => {
     const g = (demographics?.gender ?? "").toString().toLowerCase();
     return g.includes("female") ? FEMALE_AVATAR : MALE_AVATAR;
   }, [demographics?.gender]);
 
-  // Labels
   const selectedTypeLabel =
     UI_TYPES.find((t) => t.value === type)?.label ?? "All types";
 
@@ -208,7 +241,12 @@ export default function DashboardPage() {
     return `Last ${rangeDays} days`;
   }, [usingCustom, startDate, endDate, rangeDays]);
 
-  // Filtering (new taxonomy is stored in r.tag)
+  function clearCustom() {
+    setStartDate("");
+    setEndDate("");
+  }
+
+  // Filtering (identical logic)
   const filtered = useMemo(() => {
     const byType =
       type === "all"
@@ -229,24 +267,24 @@ export default function DashboardPage() {
     }
   }, [readings, type, usingCustom, startDate, endDate, rangeDays]);
 
-  // KPIs (keep mean mg/dL for the KPI card)
+  // KPIs
   const meanMgdl = useMemo(() => mean(filtered.map((r) => r.mgdl)), [filtered]);
   const count = filtered.length;
 
-  /* --------- Rolling window follows the selected time --------- */
+  // Rolling window follows selection
   const windowDays = useMemo(() => {
     if (usingCustom && startDate && endDate) {
       const ms =
         new Date(`${endDate}T23:59:59`).getTime() -
         new Date(`${startDate}T00:00:00`).getTime();
       const days = Math.max(1, Math.round(ms / MS_PER_DAY));
-      return days; // tie to custom span
+      return days;
     }
-    if (rangeDays === 0) return 90; // all-time uses clinical-ish 90d window
-    return rangeDays; // 30/60/90/180/365 → same rolling window
+    if (rangeDays === 0) return 90; // all-time -> 90d window
+    return rangeDays;
   }, [usingCustom, startDate, endDate, rangeDays]);
 
-  // Rolling-window series for the chart
+  // A1c series (rolling mean)
   const a1cSeries = useMemo(() => {
     if (filtered.length === 0) return [];
     const sorted = [...filtered].sort(
@@ -274,27 +312,13 @@ export default function DashboardPage() {
     return res;
   }, [filtered, windowDays]);
 
-  // ✅ Main card HbA1c uses the LAST point of the chart series
-  const a1c = useMemo(() => {
-    if (a1cSeries.length === 0) return NaN;
-    return a1cSeries[a1cSeries.length - 1].a1c;
-  }, [a1cSeries]);
+  // Latest A1c for card
+  const a1c = useMemo(
+    () => (a1cSeries.length ? a1cSeries[a1cSeries.length - 1].a1c : NaN),
+    [a1cSeries]
+  );
 
-  // Interpretive message
-  const a1cNote = useMemo(() => {
-    if (!Number.isFinite(a1c)) return "No estimate for the selected filters.";
-    if (a1c < 5.7) return "Within the normal range (< 5.7%).";
-    if (a1c < 6.5)
-      return "In the prediabetes range (5.7–6.4%). Consider lifestyle changes and follow-up testing.";
-    return "In the diabetes range (≥ 6.5%). Consider contacting your clinician if this is unexpected.";
-  }, [a1c]);
-
-  /**
-   * ✅ Segment coloring rule:
-   * The color of the segment (i -> i+1) depends on the **next point** (i+1).
-   * Implementation: build two keyed series (green/red) and, for each adjacent pair,
-   * put both endpoints into the chosen key so the path stays continuous at color switches.
-   */
+  // Segment coloring by NEXT point
   const segmentedSeries = useMemo(() => {
     const n = a1cSeries.length;
     if (n === 0) return [];
@@ -305,7 +329,6 @@ export default function DashboardPage() {
     }));
 
     if (n === 1) {
-      // Single point: color by its own value
       if (a1cSeries[0].a1c < 5.7) base[0].a1c_green = a1cSeries[0].a1c;
       else base[0].a1c_red = a1cSeries[0].a1c;
       return base;
@@ -314,28 +337,18 @@ export default function DashboardPage() {
     for (let i = 0; i < n - 1; i++) {
       const colorIsGreen = a1cSeries[i + 1].a1c < 5.7;
       const key = colorIsGreen ? "a1c_green" : "a1c_red";
-      // include BOTH endpoints of the segment in the chosen key
       base[i][key] = a1cSeries[i].a1c;
       base[i + 1][key] = a1cSeries[i + 1].a1c;
     }
     return base;
   }, [a1cSeries]);
 
-  function clearCustom() {
-    setStartDate("");
-    setEndDate("");
-  }
-
-  /* --------------------- BP: fetch + average for card --------------------- */
+  /* --------------------- BP fetch (range-aware) --------------------- */
   const [bp, setBp] = useState<BP[]>([]);
   const [bpReload, setBpReload] = useState(0);
-
   useEffect(() => {
     (async () => {
-      if (!patientId) {
-        setBp([]);
-        return;
-      }
+      if (!patientId) return;
       let q = supabase
         .from("bp_readings")
         .select("id, patient_id, datetime_utc, systolic, diastolic")
@@ -351,47 +364,38 @@ export default function DashboardPage() {
           Date.now() - rangeDays * MS_PER_DAY
         ).toISOString();
         q = q.gte("datetime_utc", cutoff);
-      } // else rangeDays === 0 → all time
+      }
 
-      const { data, error } = await q.returns<BP[]>();
-      if (!error) setBp(data ?? []);
-      else setBp([]);
+      const { data } = await q.returns<BP[]>();
+      setBp(data ?? []);
     })();
   }, [patientId, usingCustom, startDate, endDate, rangeDays, bpReload]);
 
   const avgSys = useMemo(() => mean(bp.map((i) => i.systolic)), [bp]);
   const avgDia = useMemo(() => mean(bp.map((i) => i.diastolic)), [bp]);
 
-  /* --------------------------------- UI --------------------------------- */
+  /* ------------------------------ UI ------------------------------ */
 
   return (
     <>
       {/* Header */}
       <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          {/* Left: Avatar + name/info */}
           <div className="flex items-start gap-4">
-            {/* Avatar */}
-            <div className="shrink-0 h-28 w-28 rounded-full ring-2 ring-amber-300 p-0.5 bg-white overflow-hidden">
+            <div className="h-28 w-28 rounded-full ring-2 ring-amber-300 p-0.5 bg-white overflow-hidden">
               <img
                 src={avatarUrl}
-                alt={`${name ?? "Patient"} profile`}
+                alt="Patient profile"
                 className="h-full w-full rounded-full object-cover origin-center scale-[1.2]"
               />
             </div>
-
-            {/* Name & pills */}
             <div>
               <div className="flex flex-wrap gap-2 text-xs">
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono ring-1 ring-slate-200 text-slate-800">
-                  ID: {patientCode ?? "—"}
-                </span>
+                {/* If you have patient code handy, you can show it here */}
               </div>
-
               <h1 className="mt-2 text-2xl font-semibold text-slate-900">
-                Welcome{name ? `, ${name}` : ""}
+                Viewing record for {demographics.full_name ?? "Patient"}
               </h1>
-
               <div className="mt-2 flex flex-wrap gap-2 text-xs">
                 <span className="rounded-full bg-amber-50 px-2 py-0.5 ring-1 ring-amber-200 text-amber-800">
                   Age: {demographics.age ?? "—"}
@@ -406,23 +410,17 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Right: CTAs */}
           <div className="flex items-center gap-2">
             <button
-              type="button"
               onClick={() => setShowAddBP(true)}
               className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              title="Add Blood Pressure"
             >
               <FontAwesomeIcon icon={faPlusCircle} />
               Add Blood Pressure
             </button>
-
             <button
-              type="button"
               onClick={() => setShowAdd(true)}
               className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              title="Add Sugar"
             >
               <FontAwesomeIcon icon={faPlusCircle} />
               Add Sugar
@@ -479,9 +477,8 @@ export default function DashboardPage() {
               <>
                 <div className="h-64 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    {/* Use segmented data for coloring; Area gets full series */}
                     <LineChart data={segmentedSeries}>
-                      {/* Area fill remains for overall shape */}
+                      {/* Gradient defs for area fill */}
                       <defs>
                         <linearGradient
                           id="a1cFill"
@@ -560,7 +557,7 @@ export default function DashboardPage() {
                         isAnimationActive={false}
                       />
 
-                      {/* ✅ Continuous colored lines by NEXT point category */}
+                      {/* Continuous colored lines by NEXT point category */}
                       <Line
                         type="monotone"
                         dataKey="a1c_green"
@@ -595,10 +592,10 @@ export default function DashboardPage() {
                   </ResponsiveContainer>
                 </div>
 
-                {/* Graph footer actions */}
+                {/* Graph footer actions (optional admin graphs route; adjust if needed) */}
                 <div className="mt-3 flex items-center justify-start">
                   <a
-                    href="/dashboard/graphs"
+                    href={`/admin/patients/${patientId}/graphs`}
                     className="inline-flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-2 text-xs font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-400"
                   >
                     <FontAwesomeIcon icon={faArrowUpRightFromSquare} />
@@ -610,9 +607,9 @@ export default function DashboardPage() {
           </section>
         </div>
 
-        {/* RIGHT: time range, HbA1c, KPIs */}
+        {/* RIGHT: time selector, HbA1c, KPIs */}
         <div className="space-y-4">
-          {/* Time selector */}
+          {/* Time selector (1:1) */}
           <section className="rounded-2xl bg-amber-50 p-4 shadow-sm ring-1 ring-amber-200">
             <div className="flex items-center gap-2 text-sm">
               <div className="font-medium text-amber-900">Time range</div>
@@ -659,7 +656,7 @@ export default function DashboardPage() {
             </div>
           </section>
 
-          {/* HbA1c card (with Average BP footer) */}
+          {/* HbA1c card (with range/type labels + Avg BP) */}
           <section
             className={[
               "rounded-2xl p-5 shadow-sm ring-1 min-h-[240px]",
@@ -695,9 +692,6 @@ export default function DashboardPage() {
               {format(a1c, 1)}%
             </div>
 
-            <div className="mt-3 text-sm text-slate-800">{a1cNote}</div>
-
-            {/* ✅ Average BP (based on selected time range) */}
             <div className="mt-4 pt-3 border-t border-slate-200/70 text-sm flex items-center justify-between">
               <span className="text-slate-700 font-medium">
                 Average Blood Pressure
@@ -716,14 +710,8 @@ export default function DashboardPage() {
               icon={faChartLine}
               title="Mean glucose (mg/dL)"
               value={format(meanMgdl, 0)}
-              tone="slate"
             />
-            <KPI
-              icon={faNotesMedical}
-              title="Readings"
-              value={String(count)}
-              tone="slate"
-            />
+            <KPI icon={faNotesMedical} title="Readings" value={String(count)} />
           </div>
         </div>
       </main>
@@ -735,13 +723,13 @@ export default function DashboardPage() {
           Note
         </div>
         <p className="mt-2">
-          HbA1c shown here is an estimate derived from your glucose readings and
-          may differ from lab results. Normal &lt; 5.7%, prediabetes 5.7–6.4%,
+          HbA1c shown here is an estimate derived from glucose readings and may
+          differ from lab results. Normal &lt; 5.7%, prediabetes 5.7–6.4%,
           diabetes ≥ 6.5%.
         </p>
       </section>
 
-      {/* Custom Range Modal */}
+      {/* Custom Range Modal (replicated 1:1) */}
       {showCustom && (
         <CustomRangeModal
           initialStart={startDate}
@@ -759,7 +747,7 @@ export default function DashboardPage() {
         />
       )}
 
-      {/* Add Sugar Modal */}
+      {/* Add Modals */}
       {showAdd && patientId && (
         <AddSugarModal
           patientId={patientId}
@@ -770,8 +758,6 @@ export default function DashboardPage() {
           }}
         />
       )}
-
-      {/* ✅ Add Blood Pressure Modal */}
       {showAddBP && patientId && (
         <AddBPModal
           patientId={patientId}
@@ -779,7 +765,7 @@ export default function DashboardPage() {
           onClose={() => setShowAddBP(false)}
           onAdded={() => {
             setShowAddBP(false);
-            setBpReload((n) => n + 1); // refresh BP averages
+            setBpReload((n) => n + 1);
           }}
         />
       )}
@@ -788,7 +774,6 @@ export default function DashboardPage() {
 }
 
 /* --------------------------- Custom Range Modal --------------------------- */
-
 function CustomRangeModal({
   initialStart,
   initialEnd,
@@ -865,26 +850,18 @@ function CustomRangeModal({
   );
 }
 
-/* --------------------------- Small component --------------------------- */
-
+/* ----------------------------- KPI Component ----------------------------- */
 function KPI({
   icon,
   title,
   value,
-  tone = "slate",
 }: {
   icon: any;
   title: string;
   value: string;
-  tone?: "slate" | "green";
 }) {
-  const toneClasses =
-    tone === "green"
-      ? "bg-green-50 ring-green-200 text-green-800"
-      : "bg-white ring-slate-200/60 text-slate-900";
-
   return (
-    <div className={`rounded-2xl p-[1px] shadow-sm ring-1 ${toneClasses}`}>
+    <div className="rounded-2xl bg-white p-[1px] shadow-sm ring-1 ring-slate-200/60">
       <div className="flex items-center gap-3 rounded-2xl bg-transparent p-4">
         <FontAwesomeIcon icon={icon} className="text-blue-600 text-xl" />
         <div>

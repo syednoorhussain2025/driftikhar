@@ -10,17 +10,26 @@ import {
   faHashtag,
 } from "@fortawesome/free-solid-svg-icons";
 
-type Props = {
-  patientId: string | null;
-  onClose: () => void;
-  onSaved?: () => void; // called after successful insert
-};
-
 type Unit = "mgdl" | "mmol";
 type UiType = "fasting" | "2h_breakfast" | "pre_lunch" | "2h_lunch" | "random";
 type DbTag = UiType; // DB enum matches UI exactly
 
-// UI options → DB tag (new taxonomy only)
+type Reading = {
+  id: string;
+  datetime_utc: string;
+  mgdl: number;
+  tag: DbTag | string;
+};
+
+type Props = {
+  patientId: string | null;
+  onClose: () => void;
+  onSaved?: () => void; // called after successful insert/update
+  /** When provided, modal is in EDIT mode */
+  reading?: Reading;
+};
+
+// UI options → DB tag
 const TYPE_OPTIONS: { value: UiType; label: string; dbTag: DbTag }[] = [
   { value: "fasting", label: "Fasting", dbTag: "fasting" },
   {
@@ -48,41 +57,86 @@ function nowLocalDatetimeValue() {
   const min = pad(d.getMinutes());
   return `${y}-${m}-${day}T${h}:${min}`;
 }
+function utcIsoToLocalDatetimeValue(iso: string) {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const y = d.getFullYear();
+  const m = pad(d.getMonth() + 1);
+  const day = pad(d.getDate());
+  const h = pad(d.getHours());
+  const min = pad(d.getMinutes());
+  return `${y}-${m}-${day}T${h}:${min}`;
+}
 
-export default function AddSugarModal({ patientId, onClose, onSaved }: Props) {
+export default function AddSugarModal({
+  patientId,
+  onClose,
+  onSaved,
+  reading,
+}: Props) {
   const dialogRef = useRef<HTMLDivElement>(null);
 
-  const [dtLocal, setDtLocal] = useState(nowLocalDatetimeValue());
+  const isEdit = !!reading;
+
+  const [dtLocal, setDtLocal] = useState<string>(
+    reading
+      ? utcIsoToLocalDatetimeValue(reading.datetime_utc)
+      : nowLocalDatetimeValue()
+  );
   const [unit, setUnit] = useState<Unit>("mgdl");
-  const [value, setValue] = useState<string>("");
-  const [uiType, setUiType] = useState<UiType>("fasting");
+  const [value, setValue] = useState<string>(
+    reading ? String(reading.mgdl) : ""
+  );
+  const [uiType, setUiType] = useState<UiType>(
+    reading && TYPE_OPTIONS.some((t) => t.value === (reading.tag as UiType))
+      ? (reading.tag as UiType)
+      : "fasting"
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // keep fields in sync if a different reading is passed while open
+  useEffect(() => {
+    if (!reading) return;
+    setDtLocal(utcIsoToLocalDatetimeValue(reading.datetime_utc));
+    setValue(String(reading.mgdl));
+    setUiType(
+      TYPE_OPTIONS.some((t) => t.value === (reading.tag as UiType))
+        ? (reading.tag as UiType)
+        : "fasting"
+    );
+  }, [reading]);
 
   const selectedMeta = useMemo(
     () => TYPE_OPTIONS.find((t) => t.value === uiType)!,
     [uiType]
   );
 
-  // close on ESC
+  // close on ESC (disabled while submitting)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !submitting) onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, submitting]);
 
-  // click outside to close
+  // click outside to close (disabled while submitting)
   useEffect(() => {
     function onClick(e: MouseEvent) {
       if (!dialogRef.current) return;
-      if (!dialogRef.current.contains(e.target as Node)) onClose();
+      if (!dialogRef.current.contains(e.target as Node) && !submitting)
+        onClose();
     }
     const overlay = document.getElementById("add-sugar-overlay");
     overlay?.addEventListener("mousedown", onClick);
     return () => overlay?.removeEventListener("mousedown", onClick);
-  }, [onClose]);
+  }, [onClose, submitting]);
+
+  // autofocus first input
+  useEffect(() => {
+    dialogRef.current?.querySelector<HTMLInputElement>("input")?.focus();
+  }, []);
 
   async function handleSave() {
     setError(null);
@@ -115,14 +169,23 @@ export default function AddSugarModal({ patientId, onClose, onSaved }: Props) {
       datetime_utc: isoUtc,
       mgdl,
       tag: selectedMeta.dbTag as any, // exact enum label in DB
-      // note: intentionally omitted; taxonomy is fully captured by tag
     };
 
-    const { error } = await supabase.from("glucose_readings").insert(payload);
+    let err = null;
+    if (isEdit && reading) {
+      const { error } = await supabase
+        .from("glucose_readings")
+        .update(payload)
+        .eq("id", reading.id);
+      err = error;
+    } else {
+      const { error } = await supabase.from("glucose_readings").insert(payload);
+      err = error;
+    }
 
     setSubmitting(false);
-    if (error) {
-      setError(error.message || "Failed to save reading.");
+    if (err) {
+      setError(err.message || "Failed to save reading.");
       return;
     }
 
@@ -144,12 +207,13 @@ export default function AddSugarModal({ patientId, onClose, onSaved }: Props) {
         <div className="flex items-center justify-between border-b px-5 py-4">
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
             <FontAwesomeIcon icon={faFlask} />
-            Add Sugar
+            {isEdit ? "Edit Sugar" : "Add Sugar"}
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400"
+            className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:opacity-50"
             aria-label="Close"
+            disabled={submitting}
           >
             <FontAwesomeIcon icon={faXmark} />
           </button>
@@ -242,7 +306,7 @@ export default function AddSugarModal({ patientId, onClose, onSaved }: Props) {
         <div className="flex items-center justify-end gap-2 border-t px-5 py-4">
           <button
             onClick={onClose}
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2"
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 disabled:opacity-50"
             disabled={submitting}
           >
             Cancel
@@ -252,7 +316,7 @@ export default function AddSugarModal({ patientId, onClose, onSaved }: Props) {
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
             disabled={submitting}
           >
-            {submitting ? "Saving…" : "Save"}
+            {submitting ? "Saving…" : isEdit ? "Update" : "Save"}
           </button>
         </div>
       </div>

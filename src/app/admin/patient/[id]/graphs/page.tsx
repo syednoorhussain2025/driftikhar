@@ -1,8 +1,9 @@
-// src/app/dashboard/graphs/page.tsx
+// src/app/admin/patients/[id]/graphs/page.tsx
 "use client";
 
-import { useMemo, useState } from "react";
-import { usePatient } from "../_context/PatientContext";
+import { useMemo, useState, useEffect } from "react";
+import { useParams } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
 import {
   LineChart,
   Line,
@@ -134,9 +135,18 @@ function A1cTooltip({ active, payload, label }: any) {
 
 /* =============================== Page =============================== */
 
-export default function SugarGraphsPage() {
-  const { readings } = usePatient();
+type Reading = {
+  id: string;
+  datetime_utc: string;
+  mgdl: number;
+  tag: string | null;
+  note: string | null;
+};
 
+export default function AdminSugarGraphsPage() {
+  const { id: patientId } = useParams<{ id: string }>();
+
+  const [readings, setReadings] = useState<Reading[]>([]);
   const [rangeDays, setRangeDays] = useState<30 | 60 | 90 | 180 | 365 | 0>(90);
   const [type, setType] = useState<UiType>("all");
 
@@ -144,6 +154,19 @@ export default function SugarGraphsPage() {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const usingCustom = Boolean(startDate && endDate);
+
+  // fetch readings for this patient (same shape as patient page)
+  useEffect(() => {
+    (async () => {
+      if (!patientId) return;
+      const { data, error } = await supabase
+        .from("glucose_readings")
+        .select("id, datetime_utc, mgdl, tag, note")
+        .eq("patient_id", patientId)
+        .order("datetime_utc", { ascending: true }); // ascending to match smoother chart
+      if (!error) setReadings((data as Reading[]) ?? []);
+    })();
+  }, [patientId]);
 
   const selectedTypeLabel =
     UI_TYPES.find((t) => t.value === type)?.label ?? "All types";
@@ -197,7 +220,7 @@ export default function SugarGraphsPage() {
     return rangeDays; // 30/60/90/180/365
   }, [usingCustom, startDate, endDate, rangeDays]);
 
-  // Rolling-window series (same as dashboard)
+  // Rolling-window series (same as patient dashboard/graphs)
   const a1cSeries = useMemo(() => {
     if (filtered.length === 0) return [];
     const sorted = [...filtered].sort(
@@ -330,10 +353,7 @@ export default function SugarGraphsPage() {
                 key={d}
                 onClick={() => {
                   setRangeDays(d as 30 | 60 | 90 | 180 | 365);
-                  if (usingCustom) {
-                    // Leaving custom mode when preset selected
-                    clearCustom();
-                  }
+                  if (usingCustom) clearCustom();
                 }}
                 role="radio"
                 aria-checked={!usingCustom && rangeDays === d}
@@ -483,7 +503,7 @@ export default function SugarGraphsPage() {
         )}
 
         <p className="mt-3 text-xs text-slate-500">
-          HbA1c shown is an estimate derived from your glucose readings (rolling{" "}
+          HbA1c shown is an estimate derived from glucose readings (rolling{" "}
           {windowDays}-day mean) and may differ from lab results. Normal &lt;
           5.7%, prediabetes 5.7–6.4%, diabetes ≥ 6.5%.{" "}
           {Number.isFinite(overallA1c)
