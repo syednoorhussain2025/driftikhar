@@ -20,8 +20,8 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { usePatient } from "./_context/PatientContext";
 import AddSugarModal from "@/components/AddSugarModal";
-import AddBPModal from "@/components/AddBPModal"; // ✅ BP modal
-import { supabase } from "@/lib/supabaseClient"; // ✅ for fetching BP readings
+import AddBPModal from "@/components/AddBPModal";
+import { supabase } from "@/lib/supabaseClient";
 import {
   LineChart,
   Line,
@@ -176,7 +176,7 @@ export default function DashboardPage() {
   } = usePatient();
 
   const [showAdd, setShowAdd] = useState(false);
-  const [showAddBP, setShowAddBP] = useState(false); // ✅ BP modal state
+  const [showAddBP, setShowAddBP] = useState(false);
 
   // Defaults: last 90 days, and UI type = all
   const [rangeDays, setRangeDays] = useState<30 | 60 | 90 | 180 | 365 | 0>(90);
@@ -208,7 +208,7 @@ export default function DashboardPage() {
     return `Last ${rangeDays} days`;
   }, [usingCustom, startDate, endDate, rangeDays]);
 
-  // Filtering (new taxonomy is stored in r.tag)
+  // Filtering
   const filtered = useMemo(() => {
     const byType =
       type === "all"
@@ -229,7 +229,7 @@ export default function DashboardPage() {
     }
   }, [readings, type, usingCustom, startDate, endDate, rangeDays]);
 
-  // KPIs (keep mean mg/dL for the KPI card)
+  // KPIs
   const meanMgdl = useMemo(() => mean(filtered.map((r) => r.mgdl)), [filtered]);
   const count = filtered.length;
 
@@ -240,10 +240,10 @@ export default function DashboardPage() {
         new Date(`${endDate}T23:59:59`).getTime() -
         new Date(`${startDate}T00:00:00`).getTime();
       const days = Math.max(1, Math.round(ms / MS_PER_DAY));
-      return days; // tie to custom span
+      return days;
     }
-    if (rangeDays === 0) return 90; // all-time uses clinical-ish 90d window
-    return rangeDays; // 30/60/90/180/365 → same rolling window
+    if (rangeDays === 0) return 90;
+    return rangeDays;
   }, [usingCustom, startDate, endDate, rangeDays]);
 
   // Rolling-window series for the chart
@@ -274,13 +274,12 @@ export default function DashboardPage() {
     return res;
   }, [filtered, windowDays]);
 
-  // ✅ Main card HbA1c uses the LAST point of the chart series
+  // HbA1c KPI (last point)
   const a1c = useMemo(() => {
     if (a1cSeries.length === 0) return NaN;
     return a1cSeries[a1cSeries.length - 1].a1c;
   }, [a1cSeries]);
 
-  // Interpretive message
   const a1cNote = useMemo(() => {
     if (!Number.isFinite(a1c)) return "No estimate for the selected filters.";
     if (a1c < 5.7) return "Within the normal range (< 5.7%).";
@@ -290,10 +289,7 @@ export default function DashboardPage() {
   }, [a1c]);
 
   /**
-   * ✅ Segment coloring rule:
-   * The color of the segment (i -> i+1) depends on the **next point** (i+1).
-   * Implementation: build two keyed series (green/red) and, for each adjacent pair,
-   * put both endpoints into the chosen key so the path stays continuous at color switches.
+   * Segment coloring (by next point)
    */
   const segmentedSeries = useMemo(() => {
     const n = a1cSeries.length;
@@ -305,7 +301,6 @@ export default function DashboardPage() {
     }));
 
     if (n === 1) {
-      // Single point: color by its own value
       if (a1cSeries[0].a1c < 5.7) base[0].a1c_green = a1cSeries[0].a1c;
       else base[0].a1c_red = a1cSeries[0].a1c;
       return base;
@@ -314,7 +309,6 @@ export default function DashboardPage() {
     for (let i = 0; i < n - 1; i++) {
       const colorIsGreen = a1cSeries[i + 1].a1c < 5.7;
       const key = colorIsGreen ? "a1c_green" : "a1c_red";
-      // include BOTH endpoints of the segment in the chosen key
       base[i][key] = a1cSeries[i].a1c;
       base[i + 1][key] = a1cSeries[i + 1].a1c;
     }
@@ -351,7 +345,7 @@ export default function DashboardPage() {
           Date.now() - rangeDays * MS_PER_DAY
         ).toISOString();
         q = q.gte("datetime_utc", cutoff);
-      } // else rangeDays === 0 → all time
+      }
 
       const { data, error } = await q.returns<BP[]>();
       if (!error) setBp(data ?? []);
@@ -366,11 +360,11 @@ export default function DashboardPage() {
 
   return (
     <>
-      {/* Header */}
-      <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      {/* Header card */}
+      <section className="w-full max-w-full overflow-hidden rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between min-w-0">
           {/* Left: Avatar + name/info */}
-          <div className="flex items-start gap-4">
+          <div className="flex items-start gap-4 min-w-0">
             {/* Avatar */}
             <div className="shrink-0 h-28 w-28 rounded-full ring-2 ring-amber-300 p-0.5 bg-white overflow-hidden">
               <img
@@ -381,14 +375,14 @@ export default function DashboardPage() {
             </div>
 
             {/* Name & pills */}
-            <div>
+            <div className="min-w-0">
               <div className="flex flex-wrap gap-2 text-xs">
                 <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono ring-1 ring-slate-200 text-slate-800">
                   ID: {patientCode ?? "—"}
                 </span>
               </div>
 
-              <h1 className="mt-2 text-2xl font-semibold text-slate-900">
+              <h1 className="mt-2 text-2xl font-semibold text-slate-900 break-words">
                 Welcome{name ? `, ${name}` : ""}
               </h1>
 
@@ -406,8 +400,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Right: CTAs */}
-          <div className="flex items-center gap-2">
+          {/* Right: CTAs (wrap on mobile) */}
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => setShowAddBP(true)}
@@ -437,51 +431,51 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Main layout: 50/50 split */}
+      {/* Main layout */}
       <main className="mt-6 grid gap-6 lg:grid-cols-2">
         {/* LEFT: type pills + graph */}
-        <div className="space-y-4">
-          {/* Type pills with icons */}
-          <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/60">
+        <div className="space-y-4 min-w-0">
+          {/* Type pills with icons (scrollable row on mobile) */}
+          <section className="w-full max-w-full overflow-hidden rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/60">
             <div className="flex items-center gap-3 text-sm">
-              <span className="text-slate-600">Type:</span>
-              <div className="flex flex-wrap items-center gap-2">
-                {UI_TYPES.map(({ value, label, icon }) => {
-                  const active = type === value;
-                  return (
-                    <button
-                      key={value}
-                      onClick={() => setType(value)}
-                      className={[
-                        "inline-flex items-center gap-2 rounded-full px-3 py-1 ring-1 transition focus:outline-none focus:ring-2",
-                        active
-                          ? "bg-emerald-600 text-white ring-emerald-600"
-                          : "bg-white text-slate-700 ring-slate-300 hover:bg-slate-100",
-                      ].join(" ")}
-                      aria-pressed={active}
-                    >
-                      <FontAwesomeIcon icon={icon} className="text-[12px]" />
-                      {label}
-                    </button>
-                  );
-                })}
+              <span className="text-slate-600 shrink-0">Type:</span>
+              <div className="-mx-4 px-4 hx">
+                <div className="flex items-center gap-2 w-max">
+                  {UI_TYPES.map(({ value, label, icon }) => {
+                    const active = type === value;
+                    return (
+                      <button
+                        key={value}
+                        onClick={() => setType(value)}
+                        className={[
+                          "inline-flex items-center gap-2 rounded-full px-3 py-1 ring-1 transition focus:outline-none focus:ring-2",
+                          active
+                            ? "bg-emerald-600 text-white ring-emerald-600"
+                            : "bg-white text-slate-700 ring-slate-300 hover:bg-slate-100",
+                        ].join(" ")}
+                        aria-pressed={active}
+                      >
+                        <FontAwesomeIcon icon={icon} className="text-[12px]" />
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </section>
 
           {/* Graph */}
-          <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60">
+          <section className="w-full max-w-full overflow-hidden rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60">
             {a1cSeries.length === 0 ? (
               <div className="text-sm text-slate-600">
                 No readings in the selected range/type.
               </div>
             ) : (
               <>
-                <div className="h-64 w-full">
+                <div className="h-64 w-full min-w-0">
                   <ResponsiveContainer width="100%" height="100%">
-                    {/* Use segmented data for coloring; Area gets full series */}
                     <LineChart data={segmentedSeries}>
-                      {/* Area fill remains for overall shape */}
                       <defs>
                         <linearGradient
                           id="a1cFill"
@@ -516,7 +510,6 @@ export default function DashboardPage() {
                       />
                       <Tooltip content={<A1cTooltip />} />
 
-                      {/* Colored reference bands */}
                       <ReferenceArea
                         y1={4.0}
                         y2={5.7}
@@ -550,7 +543,6 @@ export default function DashboardPage() {
                         strokeDasharray="4 4"
                       />
 
-                      {/* Shaded area using the full series */}
                       <Area
                         data={a1cSeries}
                         type="monotone"
@@ -560,7 +552,6 @@ export default function DashboardPage() {
                         isAnimationActive={false}
                       />
 
-                      {/* ✅ Continuous colored lines by NEXT point category */}
                       <Line
                         type="monotone"
                         dataKey="a1c_green"
@@ -573,7 +564,7 @@ export default function DashboardPage() {
                           fill: "#fff",
                         }}
                         activeDot={{ r: 5 }}
-                        connectNulls={true}
+                        connectNulls
                         isAnimationActive={false}
                       />
                       <Line
@@ -588,14 +579,13 @@ export default function DashboardPage() {
                           fill: "#fff",
                         }}
                         activeDot={{ r: 5 }}
-                        connectNulls={true}
+                        connectNulls
                         isAnimationActive={false}
                       />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
 
-                {/* Graph footer actions */}
                 <div className="mt-3 flex items-center justify-start">
                   <a
                     href="/dashboard/graphs"
@@ -611,58 +601,64 @@ export default function DashboardPage() {
         </div>
 
         {/* RIGHT: time range, HbA1c, KPIs */}
-        <div className="space-y-4">
-          {/* Time selector */}
-          <section className="rounded-2xl bg-amber-50 p-4 shadow-sm ring-1 ring-amber-200">
+        <div className="space-y-4 min-w-0">
+          {/* Time selector (scrollable row) */}
+          <section className="w-full max-w-full overflow-hidden rounded-2xl bg-amber-50 p-4 shadow-sm ring-1 ring-amber-200">
             <div className="flex items-center gap-2 text-sm">
-              <div className="font-medium text-amber-900">Time range</div>
-              {[30, 60, 90, 180, 365].map((d) => (
-                <button
-                  key={d}
-                  onClick={() => {
-                    setRangeDays(d as 30 | 60 | 90 | 180 | 365);
-                    clearCustom();
-                  }}
-                  className={`rounded-full px-3 py-1 ring-1 transition focus:outline-none focus:ring-2 ${
-                    !usingCustom && rangeDays === d
-                      ? "bg-amber-600 text-white ring-amber-600"
-                      : "bg-white text-amber-900 ring-amber-300 hover:bg-amber-100"
-                  }`}
-                  aria-pressed={!usingCustom && rangeDays === d}
-                >
-                  {d}d
-                </button>
-              ))}
-              <button
-                onClick={() => {
-                  setRangeDays(0);
-                  clearCustom();
-                }}
-                className={`rounded-full px-3 py-1 ring-1 transition focus:outline-none focus:ring-2 ${
-                  !usingCustom && rangeDays === 0
-                    ? "bg-amber-600 text-white ring-amber-600"
-                    : "bg-white text-amber-900 ring-amber-300 hover:bg-amber-100"
-                }`}
-                aria-pressed={!usingCustom && rangeDays === 0}
-              >
-                all
-              </button>
-              <button
-                onClick={() => setShowCustom(true)}
-                className="ml-2 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 ring-1 ring-amber-300 text-amber-900 hover:bg-amber-100 focus:outline-none focus:ring-2"
-                title="Custom date range"
-                aria-expanded={showCustom}
-              >
-                <FontAwesomeIcon icon={faCalendarDays} />
-                Custom
-              </button>
+              <div className="font-medium text-amber-900 shrink-0">
+                Time range
+              </div>
+              <div className="-mx-4 px-4 hx">
+                <div className="flex items-center gap-2 w-max">
+                  {[30, 60, 90, 180, 365].map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => {
+                        setRangeDays(d as 30 | 60 | 90 | 180 | 365);
+                        clearCustom();
+                      }}
+                      className={`rounded-full px-3 py-1 ring-1 transition focus:outline-none focus:ring-2 ${
+                        !usingCustom && rangeDays === d
+                          ? "bg-amber-600 text-white ring-amber-600"
+                          : "bg-white text-amber-900 ring-amber-300 hover:bg-amber-100"
+                      }`}
+                      aria-pressed={!usingCustom && rangeDays === d}
+                    >
+                      {d}d
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => {
+                      setRangeDays(0);
+                      clearCustom();
+                    }}
+                    className={`rounded-full px-3 py-1 ring-1 transition focus:outline-none focus:ring-2 ${
+                      !usingCustom && rangeDays === 0
+                        ? "bg-amber-600 text-white ring-amber-600"
+                        : "bg-white text-amber-900 ring-amber-300 hover:bg-amber-100"
+                    }`}
+                    aria-pressed={!usingCustom && rangeDays === 0}
+                  >
+                    all
+                  </button>
+                  <button
+                    onClick={() => setShowCustom(true)}
+                    className="ml-2 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 ring-1 ring-amber-300 text-amber-900 hover:bg-amber-100 focus:outline-none focus:ring-2"
+                    title="Custom date range"
+                    aria-expanded={showCustom}
+                  >
+                    <FontAwesomeIcon icon={faCalendarDays} />
+                    Custom
+                  </button>
+                </div>
+              </div>
             </div>
           </section>
 
           {/* HbA1c card (with Average BP footer) */}
           <section
             className={[
-              "rounded-2xl p-5 shadow-sm ring-1 min-h-[240px]",
+              "w-full max-w-full overflow-hidden rounded-2xl p-5 shadow-sm ring-1 min-h-[240px]",
               Number.isFinite(a1c) && a1c < 5.7
                 ? "bg-emerald-50 ring-emerald-200"
                 : "bg-rose-50 ring-rose-200",
@@ -697,7 +693,6 @@ export default function DashboardPage() {
 
             <div className="mt-3 text-sm text-slate-800">{a1cNote}</div>
 
-            {/* ✅ Average BP (based on selected time range) */}
             <div className="mt-4 pt-3 border-t border-slate-200/70 text-sm flex items-center justify-between">
               <span className="text-slate-700 font-medium">
                 Average Blood Pressure
@@ -711,7 +706,7 @@ export default function DashboardPage() {
           </section>
 
           {/* KPIs */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <KPI
               icon={faChartLine}
               title="Mean glucose (mg/dL)"
@@ -729,7 +724,7 @@ export default function DashboardPage() {
       </main>
 
       {/* Note */}
-      <section className="mt-6 rounded-2xl bg-white p-4 text-sm text-slate-600 shadow-sm ring-1 ring-slate-200/60">
+      <section className="mt-6 w-full max-w-full overflow-hidden rounded-2xl bg-white p-4 text-sm text-slate-600 shadow-sm ring-1 ring-slate-200/60">
         <div className="flex items-center gap-2 font-medium text-slate-800">
           <FontAwesomeIcon icon={faCircleInfo} />
           Note
@@ -771,7 +766,7 @@ export default function DashboardPage() {
         />
       )}
 
-      {/* ✅ Add Blood Pressure Modal */}
+      {/* Add Blood Pressure Modal */}
       {showAddBP && patientId && (
         <AddBPModal
           patientId={patientId}
@@ -779,7 +774,7 @@ export default function DashboardPage() {
           onClose={() => setShowAddBP(false)}
           onAdded={() => {
             setShowAddBP(false);
-            setBpReload((n) => n + 1); // refresh BP averages
+            setBpReload((n) => n + 1);
           }}
         />
       )}
@@ -884,10 +879,12 @@ function KPI({
       : "bg-white ring-slate-200/60 text-slate-900";
 
   return (
-    <div className={`rounded-2xl p-[1px] shadow-sm ring-1 ${toneClasses}`}>
+    <div
+      className={`w-full max-w-full overflow-hidden rounded-2xl p-[1px] shadow-sm ring-1 ${toneClasses}`}
+    >
       <div className="flex items-center gap-3 rounded-2xl bg-transparent p-4">
         <FontAwesomeIcon icon={icon} className="text-blue-600 text-xl" />
-        <div>
+        <div className="min-w-0">
           <div className="text-xs text-slate-600">{title}</div>
           <div className="mt-1 text-2xl font-semibold tabular-nums">
             {value}

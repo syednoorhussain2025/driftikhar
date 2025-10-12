@@ -16,17 +16,23 @@ export default function DashboardLayout({
   return (
     <PatientProvider>
       <div className="min-h-screen bg-[#f5f7fb]">
-        {/* Global header (burger appears only in app area) */}
+        {/* Header (burger only in app area) */}
         <Header onOpenSidebar={() => setSidebarOpen(true)} />
 
         {/* Sidebar:
-            - Mobile: drawer controlled by state above
+            - Mobile: drawer (state-controlled)
             - Desktop: fixed rail (lg+) */}
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-        {/* Content offset so it doesn't sit under the desktop rail */}
+        {/* Desktop rail offset.
+           Add overflow guards so children can't cause horizontal scroll. */}
         <div className="lg:pl-72">
-          <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>
+          <main
+            role="main"
+            className="mx-auto max-w-7xl px-4 py-6 overflow-hidden min-w-0"
+          >
+            {children}
+          </main>
         </div>
       </div>
     </PatientProvider>

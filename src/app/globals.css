@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* ------------------------------------------------------------ */
+/* Root theme variables                                         */
+/* ------------------------------------------------------------ */
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -22,8 +25,48 @@
   }
 }
 
+/* ------------------------------------------------------------ */
+/* Base body styles                                             */
+/* ------------------------------------------------------------ */
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden; /* ✅ Prevent horizontal scroll on mobile */
 }
+
+/* ------------------------------------------------------------ */
+/* Responsive & overflow safety                                 */
+/* ------------------------------------------------------------ */
+
+/* Ensure media never exceeds container width */
+img,
+svg,
+canvas,
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Utility: horizontal scroll container for chip/toolbars */
+.hx {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Utility: cut off overflowing content in flex/grid items */
+.overflow-fix {
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Optional helper for debugging overflow sources (disabled by default) */
+/* 
+* { outline: 0px solid red; }
+*/
+
+/* ------------------------------------------------------------ */
+/* Tailwind layer (if custom components added later)            */
+/* ------------------------------------------------------------ */
+/* You can add custom @layer base, components, or utilities below */
