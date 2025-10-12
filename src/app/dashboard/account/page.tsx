@@ -206,7 +206,11 @@ export default function AccountPage() {
       setDeleting(true);
 
       const res = await deleteMyAccount();
-      if (!res?.ok) throw new Error("Deletion failed.");
+
+      // 🔎 Surface the exact server error instead of a generic message
+      if (!res?.ok) {
+        throw new Error(res?.error || "Deletion failed.");
+      }
 
       await supabase.auth.signOut();
       window.location.href = "/goodbye";
@@ -405,6 +409,7 @@ export default function AccountPage() {
           disabled={deleting}
           title="Permanently delete account"
           className="border border-rose-300 text-rose-700 hover:bg-rose-50"
+          aria-busy={deleting}
         >
           <FontAwesomeIcon icon={faTrash} className="w-4 h-4" />
           {deleting ? "Deleting…" : "Delete my account"}

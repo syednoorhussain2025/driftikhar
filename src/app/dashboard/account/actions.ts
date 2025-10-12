@@ -7,13 +7,13 @@ import { createClient } from "@supabase/supabase-js";
 type ActionResult = { ok: true } | { ok: false; error: string };
 
 /**
- * Permanently deletes the currently authenticated user.
+ * Permanently deletes the currently authenticated user and their data.
  * - Reads the user from auth cookies (server-side)
- * - Uses the service-role key to delete the auth user (bypasses RLS)
- * - Returns a plain JSON object (no throws), preventing Server Components render errors
+ * - Uses service-role client for domain deletes (bypasses RLS)
+ * - Deletes the auth user with admin API
+ * - Returns a plain JSON object (no throws) for stable UI handling
  *
- * If your DB does not use ON DELETE CASCADE for domain tables linked to auth.users,
- * delete child rows manually before the admin delete (see commented section).
+ * Adjust table names in the "Domain deletes" section to match your schema.
  */
 export async function deleteMyAccount(): Promise<ActionResult> {
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -30,74 +30,101 @@ export async function deleteMyAccount(): Promise<ActionResult> {
   // Next.js 15: cookies() is async in server actions
   const cookieStore = await cookies();
 
-  // Server-side anon client bound to the caller's auth cookies
-  const server = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  // 1) Identify current user (anon server client bound to caller cookies)
+  const serverAnon = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     cookies: {
       get(name: string) {
         return cookieStore.get(name)?.value;
       },
-      set() {
-        /* no-op */
-      },
-      remove() {
-        /* no-op */
-      },
+      set() {},
+      remove() {},
     },
   });
 
-  // Identify the current user
   const {
     data: { user },
     error: userErr,
-  } = await server.auth.getUser();
+  } = await serverAnon.auth.getUser();
 
   if (userErr)
-    return {
-      ok: false,
-      error: userErr.message || "Unable to read current user.",
-    };
+    return { ok: false, error: `Auth read failed: ${userErr.message}` };
   if (!user) return { ok: false, error: "Not authenticated." };
 
   const userId = user.id;
 
-  // ---------------------------------------------------------------------------
-  // OPTIONAL: If you do NOT have ON DELETE CASCADE, delete dependent rows first.
-  // ---------------------------------------------------------------------------
-  // try {
-  //   const { data: patient, error: pErr } = await server
-  //     .from("patients")
-  //     .select("id")
-  //     .eq("user_id", userId)
-  //     .maybeSingle();
-  //   if (pErr) return { ok: false, error: pErr.message };
-  //
-  //   const patientId = patient?.id;
-  //   if (patientId) {
-  //     const delDemo = await server.from("patient_demographics").delete().eq("patient_id", patientId);
-  //     if (delDemo.error) return { ok: false, error: delDemo.error.message };
-  //
-  //     // Example: other child tables
-  //     // const delReadings = await server.from("glucose_readings").delete().eq("patient_id", patientId);
-  //     // if (delReadings.error) return { ok: false, error: delReadings.error.message };
-  //
-  //     const delPatient = await server.from("patients").delete().eq("id", patientId);
-  //     if (delPatient.error) return { ok: false, error: delPatient.error.message };
-  //   }
-  // } catch (e) {
-  //   const msg = e instanceof Error ? e.message : String(e);
-  //   return { ok: false, error: msg };
-  // }
-
-  // Admin client (service role) to delete the auth user; bypasses RLS
+  // 2) Service-role client (bypasses RLS) for domain deletes + admin delete
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const { error: delErr } = await admin.auth.admin.deleteUser(userId);
-  if (delErr)
-    return { ok: false, error: delErr.message || "Failed to delete user." };
+  // -----------------------
+  // Domain deletes (optional)
+  // -----------------------
+  // If you have ON DELETE CASCADE wired from auth.users → profiles/patients/etc.,
+  // you can skip this block. Otherwise, remove children first using the service client.
+  try {
+    // Example: locate a patient row tied to this user
+    const { data: patient, error: pErr } = await admin
+      .from("patients")
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle();
 
-  // Optional: perform storage cleanup if you keep user files in buckets
+    if (pErr)
+      return { ok: false, error: `Lookup patients failed: ${pErr.message}` };
+
+    const patientId = patient?.id;
+
+    if (patientId) {
+      // Delete child rows referencing patient_id (adjust to your schema)
+      const delDemo = await admin
+        .from("patient_demographics")
+        .delete()
+        .eq("patient_id", patientId);
+      if (delDemo.error) {
+        return {
+          ok: false,
+          error: `Delete demographics failed: ${delDemo.error.message}`,
+        };
+      }
+
+      // If you have other tables (uncomment/adjust as needed)
+      // const delReadings = await admin.from("glucose_readings").delete().eq("patient_id", patientId);
+      // if (delReadings.error) {
+      //   return { ok: false, error: `Delete readings failed: ${delReadings.error.message}` };
+      // }
+
+      // Finally delete the patient row
+      const delPatient = await admin
+        .from("patients")
+        .delete()
+        .eq("id", patientId);
+      if (delPatient.error) {
+        return {
+          ok: false,
+          error: `Delete patient failed: ${delPatient.error.message}`,
+        };
+      }
+    }
+
+    // If you maintain a profiles table keyed by user_id, delete it too:
+    // const delProfile = await admin.from("profiles").delete().eq("user_id", userId);
+    // if (delProfile.error) {
+    //   return { ok: false, error: `Delete profile failed: ${delProfile.error.message}` };
+    // }
+
+    // (Optional) Storage cleanup if you store user files in buckets
+    // await admin.storage.from("user-assets").remove([...paths]);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, error: `Domain deletes error: ${msg}` };
+  }
+
+  // 3) Delete the auth user (must be last)
+  const { error: delAuthErr } = await admin.auth.admin.deleteUser(userId);
+  if (delAuthErr) {
+    return { ok: false, error: `Auth delete failed: ${delAuthErr.message}` };
+  }
 
   return { ok: true };
 }
