@@ -24,86 +24,87 @@ export default function RegisterPatient() {
     e?.preventDefault();
     setErrorMsg(null);
 
-    // Minimal client-side validation
     if (!fullName.trim()) {
-      setErrorMsg("Please enter your full name.");
-      return;
-    }
-    if (age !== "" && (Number(age) < 0 || Number(age) > 120)) {
-      setErrorMsg("Please enter a valid age.");
+      setErrorMsg("Please enter the patient's full name.");
       return;
     }
 
     setLoading(true);
-    try {
-      const { data: auth } = await supabase.auth.getUser();
-      const userId = auth.user?.id;
-      if (!userId) {
-        setErrorMsg("You are not signed in.");
+
+    const { data: auth } = await supabase.auth.getUser();
+    const userId = auth.user?.id;
+    if (!userId) {
+      setLoading(false);
+      setErrorMsg("Not signed in.");
+      return;
+    }
+
+    const { data: existing, error: exErr } = await supabase
+      .from("patients")
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (exErr) {
+      setLoading(false);
+      setErrorMsg(exErr.message);
+      return;
+    }
+
+    let patientId: string | null = existing?.id ?? null;
+
+    if (!patientId) {
+      const { data: created, error: e1 } = await supabase.rpc(
+        "gen_patient_code"
+      );
+      if (e1) {
         setLoading(false);
+        setErrorMsg(e1.message);
         return;
       }
 
-      // 1) Does patient already exist?
-      const { data: existing, error: exErr } = await supabase
+      const { data: patientRow, error: e2 } = await supabase
         .from("patients")
+        .insert({ user_id: userId, patient_code: created as string })
         .select("id")
-        .eq("user_id", userId)
-        .maybeSingle();
+        .single();
 
-      if (exErr) throw exErr;
-
-      let patientId: string | null = existing?.id ?? null;
-
-      if (!patientId) {
-        // 2) Create patient with generated code
-        const { data: created, error: genErr } = await supabase.rpc(
-          "gen_patient_code"
-        );
-        if (genErr) throw genErr;
-
-        const { data: patientRow, error: insErr } = await supabase
-          .from("patients")
-          .insert({ user_id: userId, patient_code: created as string })
-          .select("id")
-          .single();
-
-        if (insErr) throw insErr;
-        patientId = patientRow.id;
+      if (e2) {
+        setLoading(false);
+        setErrorMsg(e2.message);
+        return;
       }
-
-      // 3) Upsert demographics
-      const { error: upErr } = await supabase
-        .from("patient_demographics")
-        .upsert({
-          patient_id: patientId!,
-          full_name: fullName.trim(),
-          mobile: mobile.trim() || null,
-          city: city.trim() || null,
-          age: age === "" ? null : Number(age),
-          gender: gender || null,
-        });
-
-      if (upErr) throw upErr;
-
-      router.replace("/dashboard");
-    } catch (e: any) {
-      setErrorMsg(e?.message ?? "Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
+      patientId = patientRow.id;
     }
+
+    const { error: e3 } = await supabase.from("patient_demographics").upsert({
+      patient_id: patientId,
+      full_name: fullName.trim(),
+      mobile: mobile.trim() || null,
+      city: city.trim() || null,
+      age: age === "" ? null : Number(age),
+      gender: gender || null,
+    });
+
+    setLoading(false);
+
+    if (e3) {
+      setErrorMsg(e3.message);
+      return;
+    }
+
+    router.replace("/dashboard");
   }
 
   return (
     <main className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-lg">
         {/* Card */}
-        <div className="rounded-2xl bg-white shadow-lg border border-slate-100 transition-all duration-300 hover:shadow-2xl">
+        <div className="rounded-2xl bg-white shadow-lg border border-slate-100">
           <div className="p-6 sm:p-8">
             {/* Header */}
             <div className="text-center">
               <div className="mx-auto mb-3 h-12 w-12 rounded-xl bg-[#1e3a8a]/10 flex items-center justify-center">
-                {/* User/profile icon */}
                 <svg
                   aria-hidden
                   className="h-6 w-6 text-[#1e3a8a]"
@@ -113,14 +114,14 @@ export default function RegisterPatient() {
                   strokeWidth="1.5"
                 >
                   <path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Z" />
-                  <path d="M4 20a8 8 0 0 1 16 0" />
+                  <path d="M4 22a8 8 0 0 1 16 0" />
                 </svg>
               </div>
               <h1 className="text-2xl font-semibold text-slate-900">
                 Patient registration
               </h1>
               <p className="mt-1 text-sm text-slate-600">
-                Tell us a bit about you to complete setup.
+                Provide patient details to continue.
               </p>
             </div>
 
@@ -136,9 +137,10 @@ export default function RegisterPatient() {
                 <input
                   id="fullName"
                   className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-[#1e3a8a]/20"
-                  placeholder="e.g., Iftikhar Ahmed"
+                  placeholder="e.g., Ayesha Khan"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
+                  autoComplete="name"
                   required
                 />
               </div>
@@ -148,15 +150,16 @@ export default function RegisterPatient() {
                   htmlFor="mobile"
                   className="mb-1.5 block text-sm font-medium text-slate-700"
                 >
-                  Mobile
+                  Mobile (optional)
                 </label>
                 <input
                   id="mobile"
                   className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-[#1e3a8a]/20"
-                  placeholder="03XX-XXXXXXX"
+                  placeholder="03XXXXXXXXX"
                   value={mobile}
                   onChange={(e) => setMobile(e.target.value)}
                   inputMode="tel"
+                  autoComplete="tel"
                 />
               </div>
 
@@ -165,7 +168,7 @@ export default function RegisterPatient() {
                   htmlFor="city"
                   className="mb-1.5 block text-sm font-medium text-slate-700"
                 >
-                  City
+                  City (optional)
                 </label>
                 <input
                   id="city"
@@ -173,6 +176,7 @@ export default function RegisterPatient() {
                   placeholder="Karachi"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
+                  autoComplete="address-level2"
                 />
               </div>
 
@@ -182,21 +186,20 @@ export default function RegisterPatient() {
                     htmlFor="age"
                     className="mb-1.5 block text-sm font-medium text-slate-700"
                   >
-                    Age
+                    Age (optional)
                   </label>
                   <input
                     id="age"
                     type="number"
+                    min={0}
                     className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-[#1e3a8a]/20"
-                    placeholder="e.g., 34"
+                    placeholder="e.g., 32"
                     value={age}
                     onChange={(e) =>
                       setAge(
                         e.target.value === "" ? "" : Number(e.target.value)
                       )
                     }
-                    min={0}
-                    max={120}
                   />
                 </div>
 
@@ -205,11 +208,11 @@ export default function RegisterPatient() {
                     htmlFor="gender"
                     className="mb-1.5 block text-sm font-medium text-slate-700"
                   >
-                    Gender
+                    Gender (optional)
                   </label>
                   <select
                     id="gender"
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-slate-900 focus:outline-none focus:ring-4 focus:ring-[#1e3a8a]/20"
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-slate-900 bg-white focus:outline-none focus:ring-4 focus:ring-[#1e3a8a]/20"
                     value={gender}
                     onChange={(e) => setGender(e.target.value as any)}
                   >
@@ -230,28 +233,17 @@ export default function RegisterPatient() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-xl bg-[#1e3a8a] py-3 font-semibold text-white text-[16px] shadow-md transition duration-200 hover:bg-[#243fa1] hover:shadow-lg active:scale-[0.98] disabled:opacity-60"
+                className="w-full rounded-xl bg-[#1e3a8a] py-3 font-semibold text-white text-[16px] shadow-md transition duration-200 hover:bg-[#243fa1] active:scale-[0.98] disabled:opacity-60"
               >
                 {loading ? "Saving..." : "Save & Continue"}
               </button>
 
-              <div className="pt-2 text-center text-sm text-slate-600">
-                Want to go back?{" "}
-                <a
-                  href="/dashboard"
-                  className="font-medium text-[#1e3a8a] hover:underline"
-                >
-                  Dashboard
-                </a>
-              </div>
+              <p className="text-center text-xs text-slate-500">
+                You can edit these details later from your dashboard.
+              </p>
             </form>
           </div>
         </div>
-
-        {/* Optional tiny helper note (kept clean like Sign Up) */}
-        {/* <p className="mt-4 text-center text-xs text-slate-500">
-          Need help? Contact support.
-        </p> */}
       </div>
     </main>
   );
