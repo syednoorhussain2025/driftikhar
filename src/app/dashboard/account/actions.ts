@@ -8,14 +8,12 @@ type ActionResult = { ok: true } | { ok: false; error: string };
 
 /**
  * Permanently deletes the currently authenticated user and their data.
- * - Reads the user from auth cookies (server-side)
- * - Uses service-role client for domain deletes (bypasses RLS)
- * - Deletes the auth user with admin API
- * - Returns a plain JSON object (no throws) for stable UI handling
+ * Accepts an optional JWT from the client (to avoid "Auth session missing" when cookies
+ * are not available on the server action call). Falls back to reading cookies.
  *
  * Adjust table names in the "Domain deletes" section to match your schema.
  */
-export async function deleteMyAccount(): Promise<ActionResult> {
+export async function deleteMyAccount(jwt?: string): Promise<ActionResult> {
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
   const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -30,7 +28,7 @@ export async function deleteMyAccount(): Promise<ActionResult> {
   // Next.js 15: cookies() is async in server actions
   const cookieStore = await cookies();
 
-  // 1) Identify current user (anon server client bound to caller cookies)
+  // 1) Identify current user (prefer JWT; otherwise use cookies)
   const serverAnon = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     cookies: {
       get(name: string) {
@@ -41,16 +39,17 @@ export async function deleteMyAccount(): Promise<ActionResult> {
     },
   });
 
-  const {
-    data: { user },
-    error: userErr,
-  } = await serverAnon.auth.getUser();
+  let userId: string;
+  {
+    const { data, error } = jwt
+      ? await serverAnon.auth.getUser(jwt)
+      : await serverAnon.auth.getUser();
 
-  if (userErr)
-    return { ok: false, error: `Auth read failed: ${userErr.message}` };
-  if (!user) return { ok: false, error: "Not authenticated." };
-
-  const userId = user.id;
+    if (error)
+      return { ok: false, error: `Auth read failed: ${error.message}` };
+    if (!data?.user) return { ok: false, error: "Not authenticated." };
+    userId = data.user.id;
+  }
 
   // 2) Service-role client (bypasses RLS) for domain deletes + admin delete
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
@@ -60,8 +59,7 @@ export async function deleteMyAccount(): Promise<ActionResult> {
   // -----------------------
   // Domain deletes (optional)
   // -----------------------
-  // If you have ON DELETE CASCADE wired from auth.users → profiles/patients/etc.,
-  // you can skip this block. Otherwise, remove children first using the service client.
+  // If you have ON DELETE CASCADE from auth.users -> domain tables, you can skip this.
   try {
     // Example: locate a patient row tied to this user
     const { data: patient, error: pErr } = await admin
@@ -81,37 +79,33 @@ export async function deleteMyAccount(): Promise<ActionResult> {
         .from("patient_demographics")
         .delete()
         .eq("patient_id", patientId);
-      if (delDemo.error) {
+      if (delDemo.error)
         return {
           ok: false,
           error: `Delete demographics failed: ${delDemo.error.message}`,
         };
-      }
 
-      // If you have other tables (uncomment/adjust as needed)
+      // Example for other tables:
       // const delReadings = await admin.from("glucose_readings").delete().eq("patient_id", patientId);
-      // if (delReadings.error) {
+      // if (delReadings.error)
       //   return { ok: false, error: `Delete readings failed: ${delReadings.error.message}` };
-      // }
 
       // Finally delete the patient row
       const delPatient = await admin
         .from("patients")
         .delete()
         .eq("id", patientId);
-      if (delPatient.error) {
+      if (delPatient.error)
         return {
           ok: false,
           error: `Delete patient failed: ${delPatient.error.message}`,
         };
-      }
     }
 
-    // If you maintain a profiles table keyed by user_id, delete it too:
+    // If you keep a profiles table keyed by user_id, delete it too:
     // const delProfile = await admin.from("profiles").delete().eq("user_id", userId);
-    // if (delProfile.error) {
+    // if (delProfile.error)
     //   return { ok: false, error: `Delete profile failed: ${delProfile.error.message}` };
-    // }
 
     // (Optional) Storage cleanup if you store user files in buckets
     // await admin.storage.from("user-assets").remove([...paths]);
@@ -122,9 +116,8 @@ export async function deleteMyAccount(): Promise<ActionResult> {
 
   // 3) Delete the auth user (must be last)
   const { error: delAuthErr } = await admin.auth.admin.deleteUser(userId);
-  if (delAuthErr) {
+  if (delAuthErr)
     return { ok: false, error: `Auth delete failed: ${delAuthErr.message}` };
-  }
 
   return { ok: true };
 }

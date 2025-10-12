@@ -10,7 +10,7 @@ import {
   faRotateLeft,
   faTrash,
 } from "@fortawesome/free-solid-svg-icons";
-import { deleteMyAccount } from "./actions"; // ✅ server action
+import { deleteMyAccount } from "./actions"; // ✅ server action accepts optional JWT
 
 const MALE_AVATAR =
   "https://mnlnbuosiczjalpgeara.supabase.co/storage/v1/object/public/images/male%20profile.png";
@@ -205,7 +205,13 @@ export default function AccountPage() {
 
       setDeleting(true);
 
-      const res = await deleteMyAccount();
+      // ⬇️ Get the current access token and pass it to the server action
+      const { data: sessionData, error: sessErr } =
+        await supabase.auth.getSession();
+      if (sessErr) throw sessErr;
+      const jwt = sessionData?.session?.access_token;
+
+      const res = await deleteMyAccount(jwt);
 
       // 🔎 Surface the exact server error instead of a generic message
       if (!res?.ok) {
