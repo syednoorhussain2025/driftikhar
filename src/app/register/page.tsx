@@ -1,257 +1,258 @@
 "use client";
-
-import { useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
-export default function SignUpPage() {
+export default function RegisterPatient() {
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
 
-  const checkEmailMode = searchParams.get("check") === "1";
-
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [mobile, setMobile] = useState("");
+  const [city, setCity] = useState("");
+  const [age, setAge] = useState<number | "">("");
+  const [gender, setGender] = useState<"male" | "female" | "other" | "">("");
   const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // If the user is already authenticated, send them away from sign-up
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) router.replace("/dashboard");
+      if (!data.session) router.replace("/");
     });
   }, [router]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErr(null);
+  async function handleSubmit(e?: React.FormEvent) {
+    e?.preventDefault();
+    setErrorMsg(null);
+
+    // Minimal client-side validation
+    if (!fullName.trim()) {
+      setErrorMsg("Please enter your full name.");
+      return;
+    }
+    if (age !== "" && (Number(age) < 0 || Number(age) > 120)) {
+      setErrorMsg("Please enter a valid age.");
+      return;
+    }
+
     setLoading(true);
     try {
-      // Where to land after the user clicks the confirm link
-      const emailRedirectTo =
-        typeof window !== "undefined"
-          ? `${window.location.origin}/auth/callback`
-          : undefined;
-
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password: password,
-        options: {
-          data: fullName ? { full_name: fullName.trim() } : undefined,
-          emailRedirectTo,
-        },
-      });
-
-      if (error) {
-        setErr(error.message);
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth.user?.id;
+      if (!userId) {
+        setErrorMsg("You are not signed in.");
+        setLoading(false);
         return;
       }
 
-      // Two possible outcomes:
-      // A) Email confirmation required -> data.user exists, data.session is null.
-      //    Show "check your email" by refreshing into confirmation state.
-      // B) Confirmation not required (or provider creates a session) -> session exists.
-      if (data.session) {
-        router.replace("/dashboard");
-      } else {
-        // "Refresh" into confirmation UI
-        const params = new URLSearchParams(searchParams?.toString() ?? "");
-        params.set("check", "1");
-        router.replace(`${pathname}?${params.toString()}`);
+      // 1) Does patient already exist?
+      const { data: existing, error: exErr } = await supabase
+        .from("patients")
+        .select("id")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (exErr) throw exErr;
+
+      let patientId: string | null = existing?.id ?? null;
+
+      if (!patientId) {
+        // 2) Create patient with generated code
+        const { data: created, error: genErr } = await supabase.rpc(
+          "gen_patient_code"
+        );
+        if (genErr) throw genErr;
+
+        const { data: patientRow, error: insErr } = await supabase
+          .from("patients")
+          .insert({ user_id: userId, patient_code: created as string })
+          .select("id")
+          .single();
+
+        if (insErr) throw insErr;
+        patientId = patientRow.id;
       }
+
+      // 3) Upsert demographics
+      const { error: upErr } = await supabase
+        .from("patient_demographics")
+        .upsert({
+          patient_id: patientId!,
+          full_name: fullName.trim(),
+          mobile: mobile.trim() || null,
+          city: city.trim() || null,
+          age: age === "" ? null : Number(age),
+          gender: gender || null,
+        });
+
+      if (upErr) throw upErr;
+
+      router.replace("/dashboard");
+    } catch (e: any) {
+      setErrorMsg(e?.message ?? "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
-  };
-
-  const goBackToForm = () => {
-    const params = new URLSearchParams(searchParams?.toString() ?? "");
-    params.delete("check");
-    router.replace(`${pathname}?${params.toString()}`);
-  };
-
-  // Optional: allow user to resend the confirmation email if they remained on the check screen.
-  const handleResend = async () => {
-    if (!email) {
-      setErr("Enter your email above, then click Resend.");
-      return;
-    }
-    setErr(null);
-    setLoading(true);
-    try {
-      // supabase-js v2 resend
-      const { error } = await supabase.auth.resend({
-        type: "signup",
-        email: email.trim(),
-        options: {
-          emailRedirectTo:
-            typeof window !== "undefined"
-              ? `${window.location.origin}/auth/callback`
-              : undefined,
-        },
-      });
-      if (error) setErr(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-slate-50 grid place-items-center p-4">
+    <main className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         {/* Card */}
-        <div className="relative rounded-2xl bg-white shadow-lg ring-1 ring-slate-200 overflow-hidden">
-          <div
-            className="h-2"
-            style={{ backgroundColor: "#1e3a8a" }} // brand bar
-          />
-          {!checkEmailMode ? (
-            <form onSubmit={handleSubmit} className="p-6 sm:p-8">
-              <header className="mb-6 text-center">
-                <h1 className="text-2xl font-semibold text-slate-900">
-                  Create your account
-                </h1>
-                <p className="mt-1 text-sm text-slate-600">
-                  Sign up to continue to{" "}
-                  <span className="font-medium">Driftikhar.net</span>
-                </p>
-              </header>
+        <div className="rounded-2xl bg-white shadow-lg border border-slate-100 transition-all duration-300 hover:shadow-2xl">
+          <div className="p-6 sm:p-8">
+            {/* Header */}
+            <div className="text-center">
+              <div className="mx-auto mb-3 h-12 w-12 rounded-xl bg-[#1e3a8a]/10 flex items-center justify-center">
+                {/* User/profile icon */}
+                <svg
+                  aria-hidden
+                  className="h-6 w-6 text-[#1e3a8a]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                >
+                  <path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Z" />
+                  <path d="M4 20a8 8 0 0 1 16 0" />
+                </svg>
+              </div>
+              <h1 className="text-2xl font-semibold text-slate-900">
+                Patient registration
+              </h1>
+              <p className="mt-1 text-sm text-slate-600">
+                Tell us a bit about you to complete setup.
+              </p>
+            </div>
 
-              <div className="grid gap-4">
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+              <div>
+                <label
+                  htmlFor="fullName"
+                  className="mb-1.5 block text-sm font-medium text-slate-700"
+                >
+                  Full name
+                </label>
+                <input
+                  id="fullName"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-[#1e3a8a]/20"
+                  placeholder="e.g., Iftikhar Ahmed"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="mobile"
+                  className="mb-1.5 block text-sm font-medium text-slate-700"
+                >
+                  Mobile
+                </label>
+                <input
+                  id="mobile"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-[#1e3a8a]/20"
+                  placeholder="03XX-XXXXXXX"
+                  value={mobile}
+                  onChange={(e) => setMobile(e.target.value)}
+                  inputMode="tel"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="city"
+                  className="mb-1.5 block text-sm font-medium text-slate-700"
+                >
+                  City
+                </label>
+                <input
+                  id="city"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-[#1e3a8a]/20"
+                  placeholder="Karachi"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Full name (optional)
+                  <label
+                    htmlFor="age"
+                    className="mb-1.5 block text-sm font-medium text-slate-700"
+                  >
+                    Age
                   </label>
                   <input
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-offset-0 focus:ring-[#1e3a8a]"
-                    placeholder="Dr. Iftikhar Ahmed"
-                    autoComplete="name"
+                    id="age"
+                    type="number"
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-[#1e3a8a]/20"
+                    placeholder="e.g., 34"
+                    value={age}
+                    onChange={(e) =>
+                      setAge(
+                        e.target.value === "" ? "" : Number(e.target.value)
+                      )
+                    }
+                    min={0}
+                    max={120}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Email
+                  <label
+                    htmlFor="gender"
+                    className="mb-1.5 block text-sm font-medium text-slate-700"
+                  >
+                    Gender
                   </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-offset-0 focus:ring-[#1e3a8a]"
-                    placeholder="you@example.com"
-                    autoComplete="email"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Password
-                  </label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-offset-0 focus:ring-[#1e3a8a]"
-                    placeholder="Minimum 6 characters"
-                    autoComplete="new-password"
-                    minLength={6}
-                    required
-                  />
+                  <select
+                    id="gender"
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-slate-900 focus:outline-none focus:ring-4 focus:ring-[#1e3a8a]/20"
+                    value={gender}
+                    onChange={(e) => setGender(e.target.value as any)}
+                  >
+                    <option value="">Select</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
                 </div>
               </div>
 
-              {err && (
-                <p className="mt-3 text-sm text-red-600" role="alert">
-                  {err}
-                </p>
+              {errorMsg && (
+                <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
+                  {errorMsg}
+                </div>
               )}
 
               <button
                 type="submit"
                 disabled={loading}
-                className="mt-6 w-full rounded-xl py-2.5 font-semibold text-white disabled:opacity-60"
-                style={{ backgroundColor: "#1e3a8a" }}
+                className="w-full rounded-xl bg-[#1e3a8a] py-3 font-semibold text-white text-[16px] shadow-md transition duration-200 hover:bg-[#243fa1] hover:shadow-lg active:scale-[0.98] disabled:opacity-60"
               >
-                {loading ? "Creating account…" : "Sign up"}
+                {loading ? "Saving..." : "Save & Continue"}
               </button>
 
-              <p className="mt-4 text-center text-sm text-slate-600">
-                Already have an account?{" "}
+              <div className="pt-2 text-center text-sm text-slate-600">
+                Want to go back?{" "}
                 <a
-                  href="/signin"
-                  className="font-medium underline underline-offset-4"
-                  style={{ color: "#1e3a8a" }}
+                  href="/dashboard"
+                  className="font-medium text-[#1e3a8a] hover:underline"
                 >
-                  Sign in
+                  Dashboard
                 </a>
-              </p>
+              </div>
             </form>
-          ) : (
-            <div className="p-6 sm:p-8 text-center">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
-                {/* mail icon */}
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6 text-slate-700"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                >
-                  <path d="M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z" />
-                  <path d="m22 8-10 6L2 8" />
-                </svg>
-              </div>
-              <h2 className="text-xl font-semibold text-slate-900">
-                Check your email for confirmation
-              </h2>
-              <p className="mt-2 text-sm text-slate-600">
-                We’ve sent a verification link to{" "}
-                <span className="font-medium">{email || "your inbox"}</span>.
-                Click the link to activate your account.
-              </p>
-
-              {err && (
-                <p className="mt-3 text-sm text-red-600" role="alert">
-                  {err}
-                </p>
-              )}
-
-              <div className="mt-6 grid gap-3">
-                <button
-                  onClick={handleResend}
-                  disabled={loading}
-                  className="w-full rounded-xl border border-slate-300 py-2.5 font-medium text-slate-800 disabled:opacity-60"
-                >
-                  {loading ? "Resending…" : "Resend confirmation email"}
-                </button>
-                <button
-                  onClick={goBackToForm}
-                  className="w-full rounded-xl py-2.5 font-semibold text-white"
-                  style={{ backgroundColor: "#1e3a8a" }}
-                >
-                  Use a different email
-                </button>
-              </div>
-
-              <p className="mt-4 text-xs text-slate-500">
-                Didn’t get it? Check your spam/junk folder. The link may take a
-                minute to arrive.
-              </p>
-            </div>
-          )}
+          </div>
         </div>
 
-        {/* Footer brand / tiny help */}
-        <p className="mt-4 text-center text-xs text-slate-500">
-          By creating an account, you agree to our Terms and Privacy Policy.
-        </p>
+        {/* Optional tiny helper note (kept clean like Sign Up) */}
+        {/* <p className="mt-4 text-center text-xs text-slate-500">
+          Need help? Contact support.
+        </p> */}
       </div>
-    </div>
+    </main>
   );
 }
