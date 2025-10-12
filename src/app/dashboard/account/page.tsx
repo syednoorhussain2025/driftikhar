@@ -66,6 +66,12 @@ function Button(
   );
 }
 
+// Helper to safely read optional fields that may not exist on the typed context
+function getDemoField<T = unknown>(demo: unknown, key: string, fallback: T): T {
+  const obj = demo as Record<string, unknown> | null | undefined;
+  return (obj && (obj[key] as T)) ?? fallback;
+}
+
 export default function AccountPage() {
   const { patientId, name, demographics } = usePatient();
 
@@ -80,15 +86,19 @@ export default function AccountPage() {
 
   // Controlled inputs (pre-fill from context immediately)
   const [fullName, setFullName] = useState(
-    demographics.full_name ?? name ?? ""
+    (demographics as any)?.full_name ?? name ?? ""
   );
-  const [mobile, setMobile] = useState(demographics.mobile ?? "");
-  const [city, setCity] = useState(demographics.city ?? "");
+  const [mobile, setMobile] = useState<string>(
+    getDemoField<string>(demographics, "mobile", "")
+  );
+  const [city, setCity] = useState<string>((demographics as any)?.city ?? "");
   const [age, setAge] = useState<number | "">(
-    typeof demographics.age === "number" ? demographics.age : ""
+    typeof (demographics as any)?.age === "number"
+      ? (demographics as any).age
+      : ""
   );
   const [gender, setGender] = useState<"male" | "female" | "other" | "">(
-    (normalizeGender(demographics.gender) ?? "") as any
+    (normalizeGender((demographics as any)?.gender) ?? "") as any
   );
 
   // Hydrate from auth + DB (by patients.id, not auth.uid)
@@ -119,9 +129,9 @@ export default function AccountPage() {
           if (dErr) throw dErr;
 
           if (data) {
-            setFullName(data.full_name ?? fullName ?? "");
-            setMobile(data.mobile ?? mobile ?? "");
-            setCity(data.city ?? city ?? "");
+            setFullName(data.full_name ?? (fullName || ""));
+            setMobile(data.mobile ?? (mobile || ""));
+            setCity(data.city ?? (city || ""));
             setAge(
               typeof data.age === "number" && !Number.isNaN(data.age)
                 ? data.age
@@ -156,7 +166,7 @@ export default function AccountPage() {
       return;
     }
 
-    const updates = {
+    const updates: DemographicsRow = {
       patient_id: patientId,
       full_name: (fullName || "").trim() || null,
       mobile: (mobile || "").trim() || null,
@@ -168,7 +178,7 @@ export default function AccountPage() {
 
     const { error: upErr } = await supabase
       .from("patient_demographics")
-      .upsert(updates, { onConflict: "patient_id" });
+      .upsert(updates as any, { onConflict: "patient_id" });
 
     if (upErr) setError(upErr.message);
     setSaving(false);
@@ -183,7 +193,6 @@ export default function AccountPage() {
     try {
       setError(null);
 
-      // Simple double-confirm UX without extra dependencies
       const first = window.confirm(
         "This will permanently delete your account and all your data (glucose readings, demographics, etc.). This cannot be undone. Continue?"
       );
@@ -196,16 +205,11 @@ export default function AccountPage() {
 
       setDeleting(true);
 
-      // Server action: deletes auth.users row → cascades to dependent tables
       const res = await deleteMyAccount();
+      if (!res?.ok) throw new Error("Deletion failed.");
 
-      if (!res?.ok) {
-        throw new Error("Deletion failed.");
-      }
-
-      // Ensure local session is cleared and redirect to a safe page
       await supabase.auth.signOut();
-      window.location.href = "/goodbye"; // or "/" if you don’t have a goodbye page
+      window.location.href = "/goodbye";
     } catch (e: any) {
       setError(e.message ?? String(e));
     } finally {
@@ -241,7 +245,7 @@ export default function AccountPage() {
     : "—";
 
   const avatarUrl = avatarFor(
-    gender || (normalizeGender(demographics.gender) as any)
+    gender || (normalizeGender((demographics as any)?.gender) as any)
   );
 
   return (
@@ -362,14 +366,16 @@ export default function AccountPage() {
               type="button"
               variant="ghost"
               onClick={() => {
-                setFullName(demographics.full_name ?? name ?? "");
-                setMobile(demographics.mobile ?? "");
-                setCity(demographics.city ?? "");
+                setFullName((demographics as any)?.full_name ?? name ?? "");
+                setMobile(getDemoField<string>(demographics, "mobile", ""));
+                setCity((demographics as any)?.city ?? "");
                 setAge(
-                  typeof demographics.age === "number" ? demographics.age : ""
+                  typeof (demographics as any)?.age === "number"
+                    ? (demographics as any).age
+                    : ""
                 );
                 setGender(
-                  (normalizeGender(demographics.gender) ?? "") as
+                  (normalizeGender((demographics as any)?.gender) ?? "") as
                     | "male"
                     | "female"
                     | "other"
