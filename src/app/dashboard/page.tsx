@@ -179,7 +179,7 @@ export default function DashboardPage() {
   const [showAddBP, setShowAddBP] = useState(false);
 
   // Defaults: last 90 days, and UI type = all
-  the const [rangeDays, setRangeDays] = useState<30 | 60 | 90 | 180 | 365 | 0>(90);
+  const [rangeDays, setRangeDays] = useState<30 | 60 | 90 | 180 | 365 | 0>(90);
   const [type, setType] = useState<UiType>("all");
 
   // Custom dates
@@ -595,9 +595,23 @@ export default function DashboardPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={segmentedSeries}>
                       <defs>
-                        <linearGradient id="a1cFill" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#60a5fa" stopOpacity={0.25} />
-                          <stop offset="100%" stopColor="#60a5fa" stopOpacity={0} />
+                        <linearGradient
+                          id="a1cFill"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="0%"
+                            stopColor="#60a5fa"
+                            stopOpacity={0.25}
+                          />
+                          <stop
+                            offset="100%"
+                            stopColor="#60a5fa"
+                            stopOpacity={0}
+                          />
                         </linearGradient>
                       </defs>
 
@@ -636,8 +650,16 @@ export default function DashboardPage() {
                         opacity={0.06}
                       />
 
-                      <ReferenceLine y={5.7} stroke="#f59e0b" strokeDasharray="4 4" />
-                      <ReferenceLine y={6.5} stroke="#ef4444" strokeDasharray="4 4" />
+                      <ReferenceLine
+                        y={5.7}
+                        stroke="#f59e0b"
+                        strokeDasharray="4 4"
+                      />
+                      <ReferenceLine
+                        y={6.5}
+                        stroke="#ef4444"
+                        strokeDasharray="4 4"
+                      />
 
                       <Area
                         data={a1cSeries}
@@ -653,7 +675,12 @@ export default function DashboardPage() {
                         dataKey="a1c_green"
                         stroke="#10b981"
                         strokeWidth={3}
-                        dot={{ r: 3, strokeWidth: 1, stroke: "#1f2937", fill: "#fff" }}
+                        dot={{
+                          r: 3,
+                          strokeWidth: 1,
+                          stroke: "#1f2937",
+                          fill: "#fff",
+                        }}
                         activeDot={{ r: 5 }}
                         connectNulls
                         isAnimationActive={false}
@@ -663,7 +690,12 @@ export default function DashboardPage() {
                         dataKey="a1c_red"
                         stroke="#ef4444"
                         strokeWidth={3}
-                        dot={{ r: 3, strokeWidth: 1, stroke: "#1f2937", fill: "#fff" }}
+                        dot={{
+                          r: 3,
+                          strokeWidth: 1,
+                          stroke: "#1f2937",
+                          fill: "#fff",
+                        }}
                         activeDot={{ r: 5 }}
                         connectNulls
                         isAnimationActive={false}
