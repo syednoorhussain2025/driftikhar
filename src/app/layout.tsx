@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
   },
   colorScheme: "light",
-  /** ⬇️ Prevent iOS/Chrome-iOS from auto-linking phone numbers (blue on first paint) */
+  // Stop iOS from auto-linking during first paint
   formatDetection: {
     telephone: false,
     address: false,
@@ -46,20 +46,29 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${lato.variable} ${geistSans.variable} ${geistMono.variable}`}
-      /** Extra guard before CSS loads */
       style={{ WebkitTapHighlightColor: "transparent" }}
     >
+      {/* 👇 Inline, first-paint style to kill iOS tap highlight BEFORE CSS loads */}
+      <head>
+        <style
+          // Important: keep this tiny and inline so it wins the very first paint
+          dangerouslySetInnerHTML={{
+            __html: `
+              *,*::before,*::after{ -webkit-tap-highlight-color: rgba(0,0,0,0) !important; }
+              html,body{ background:#fff; }
+            `,
+          }}
+        />
+      </head>
+
       <body
         className="antialiased font-sans bg-white text-slate-900"
-        style={{
-          WebkitTapHighlightColor: "transparent",
-          WebkitTextSizeAdjust: "100%",
-        }}
+        style={{ WebkitTextSizeAdjust: "100%" }}
       >
         <div
           id="app-shell"
           className="min-h-screen isolate bg-[#f5f7fb]"
-          style={{ overscrollBehaviorY: "contain" }}
+          style={{ overscrollBehaviorY: "contain", WebkitUserSelect: "none" }}
         >
           <ClientOnlyHeader />
           <main>{children}</main>

@@ -1,4 +1,3 @@
-// src/app/dashboard/layout.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -39,7 +38,7 @@ export default function DashboardLayout({
 
   // If user resizes up to desktop, ensure layout is in a clean state
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1024px)"); // Tailwind lg breakpoint
+    const mq = window.matchMedia("(min-width: 1024px)");
     const onChange = (e: MediaQueryListEvent) => {
       if (e.matches) setSidebarOpen(false);
     };
@@ -48,26 +47,40 @@ export default function DashboardLayout({
     return () => mq.removeEventListener("change", onChange);
   }, []);
 
+  // 👇 Last-resort guard: clear any transient selection/focus after refresh/nav restore
+  useEffect(() => {
+    const clearTransient = () => {
+      try {
+        const sel = window.getSelection?.();
+        if (sel && sel.rangeCount) sel.removeAllRanges();
+        const ae = document.activeElement as HTMLElement | null;
+        if (ae && typeof ae.blur === "function") ae.blur();
+      } catch {}
+    };
+    // When the page is shown (including bfcache restores) and when it becomes visible
+    window.addEventListener("pageshow", clearTransient);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") clearTransient();
+    });
+    return () => {
+      window.removeEventListener("pageshow", clearTransient);
+    };
+  }, []);
+
   return (
     <PatientProvider>
-      {/* Dashboard shell:
-          - isolated stacking context to avoid highlight bleed
-          - overscroll containment to reduce iOS/Chrome-iOS overpaint
-          - solid background surface */}
+      {/* Shell: isolated stacking context + overscroll containment + no tap highlight/selection */}
       <div
         id="dashboard-shell"
         className="min-h-screen isolate bg-[#f5f7fb] lg:pl-72"
         style={{
           overscrollBehaviorY: "contain",
           WebkitTapHighlightColor: "transparent",
+          WebkitUserSelect: "none",
         }}
       >
-        {/* Sidebar:
-            - Mobile: drawer (opened via global header event)
-            - Desktop: fixed rail (lg+) */}
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-        {/* Content area; prevent horizontal overflow without clipping vertical scroll */}
         <main
           role="main"
           className="mx-auto max-w-7xl px-4 py-6 min-w-0 overflow-x-hidden"
