@@ -138,13 +138,14 @@ type ReadingsTableProps = {
   onRowClick: (reading: any) => void;
 };
 
+/** Desktop / tablet table (visible from sm breakpoint up) */
 const ReadingsTable = ({
   readings,
   deleting,
   onDelete,
   onRowClick,
 }: ReadingsTableProps) => (
-  <div className="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/60">
+  <div className="hidden sm:block overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/60">
     <table className="min-w-full text-left text-sm">
       <thead className="border-b border-slate-200 bg-slate-50/70 text-slate-600">
         <tr>
@@ -201,6 +202,66 @@ const ReadingsTable = ({
         ))}
       </tbody>
     </table>
+  </div>
+);
+
+/** Mobile list (cards) – always shows Delete button */
+const MobileReadingsList = ({
+  readings,
+  deleting,
+  onDelete,
+  onRowClick,
+}: ReadingsTableProps) => (
+  <div className="sm:hidden space-y-3">
+    {readings.map((r) => (
+      <div
+        key={r.id}
+        className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/60"
+        onClick={() => onRowClick(r)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") onRowClick(r);
+        }}
+        title="Tap to edit this reading"
+      >
+        {/* Top row: date/time + type + delete */}
+        <div className="flex items-start gap-3">
+          <div className="min-w-0">
+            <div className="text-sm text-slate-700">
+              {dateFmt.format(new Date(r.datetime_utc))}
+            </div>
+            <div className="mt-2 text-2xl font-bold tabular-nums text-slate-900">
+              {r.mgdl}{" "}
+              <span className="text-sm font-medium text-slate-500">mg/dL</span>
+            </div>
+          </div>
+
+          <div className="ml-auto flex items-start gap-2">
+            <span className={`${TYPE_PILL_CLASS} shrink-0`}>
+              {prettyType(r.tag)}
+            </span>
+
+            {/* Delete button: isolated click target (doesn't trigger edit) */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(r.id);
+              }}
+              disabled={!!deleting[r.id]}
+              className="ml-1 inline-flex h-9 w-9 items-center justify-center rounded-full bg-red-50 text-red-600 ring-1 ring-red-200 hover:bg-red-100 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-red-500"
+              aria-label={deleting[r.id] ? "Deleting..." : "Delete reading"}
+              title={deleting[r.id] ? "Deleting..." : "Delete reading"}
+            >
+              <FontAwesomeIcon
+                icon={faTrash}
+                className={deleting[r.id] ? "animate-spin" : ""}
+              />
+            </button>
+          </div>
+        </div>
+      </div>
+    ))}
   </div>
 );
 
@@ -264,7 +325,6 @@ export default function ReadingsPage() {
   }, []);
 
   const closeModalAndRefresh = useCallback(async () => {
-    // Refresh after close (covers both save & cancel per requirement)
     await refreshReadings();
     setShowModal(false);
     setSelected(null);
@@ -333,20 +393,30 @@ export default function ReadingsPage() {
           </div>
         </section>
 
-        {/* Main: Table or Empty/Loading */}
+        {/* Main: Table (desktop) or Cards (mobile) */}
         <section>
           {isLoading ? (
             <div className="py-20 text-center text-slate-500">Loading...</div>
           ) : filteredReadings.length > 0 ? (
             <>
+              {/* Mobile list */}
+              <MobileReadingsList
+                readings={pageItems}
+                deleting={deleting}
+                onDelete={deleteReading}
+                onRowClick={openForEdit}
+              />
+
+              {/* Desktop/tablet table */}
               <ReadingsTable
                 readings={pageItems}
                 deleting={deleting}
                 onDelete={deleteReading}
                 onRowClick={openForEdit}
               />
+
               {/* Pagination */}
-              <div className="mt-3 flex items-center justify-between rounded-xl bg-white px-4 py-3 ring-1 ring-slate-200/60">
+              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl bg-white px-4 py-3 ring-1 ring-slate-200/60">
                 <div className="text-sm text-slate-700">
                   Showing{" "}
                   <span className="font-semibold">
