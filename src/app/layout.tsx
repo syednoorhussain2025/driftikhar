@@ -1,29 +1,19 @@
+// src/app/layout.tsx
 import type { Metadata } from "next";
 import { Lato, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "@/lib/fontawesome";
 import ClientOnlyHeader from "@/components/ClientOnlyHeader";
+import Script from "next/script";
 
 export const metadata: Metadata = {
   title: "Dr Iftikhar",
   description: "Health records and dashboard",
   themeColor: "#ffffff",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    viewportFit: "cover",
-  },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-  },
+  viewport: { width: "device-width", initialScale: 1, viewportFit: "cover" },
+  appleWebApp: { capable: true, statusBarStyle: "default" },
   colorScheme: "light",
-  // Stop iOS from auto-linking during first paint
-  formatDetection: {
-    telephone: false,
-    address: false,
-    email: false,
-  },
+  formatDetection: { telephone: false, address: false, email: false },
 };
 
 const lato = Lato({
@@ -46,33 +36,64 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${lato.variable} ${geistSans.variable} ${geistMono.variable}`}
-      style={{ WebkitTapHighlightColor: "transparent" }}
     >
-      {/* 👇 Inline, first-paint style to kill iOS tap highlight BEFORE CSS loads */}
+      {/* 1) First-paint style: full-viewport mask (white) when html[data-fpmask] is present */}
       <head>
         <style
-          // Important: keep this tiny and inline so it wins the very first paint
+          // keep minimal so it loads instantly
           dangerouslySetInnerHTML={{
             __html: `
-              *,*::before,*::after{ -webkit-tap-highlight-color: rgba(0,0,0,0) !important; }
-              html,body{ background:#fff; }
+              html[data-fpmask]::before{
+                content:"";
+                position:fixed; inset:0;
+                background:#ffffff;           /* same as header/bg on first paint */
+                z-index:2147483647;           /* above everything */
+                pointer-events:none;
+              }
             `,
           }}
         />
       </head>
 
-      <body
-        className="antialiased font-sans bg-white text-slate-900"
-        style={{ WebkitTextSizeAdjust: "100%" }}
-      >
+      {/* 2) Before-interactive: if iOS/WebKit, set the attribute for the *first* paint */}
+      <Script id="fp-mask-on" strategy="beforeInteractive">{`
+        (function(){
+          var ua = navigator.userAgent || "";
+          var isiOS = /iP(ad|hone|od)/.test(ua) || (/Macintosh/.test(ua) && 'ontouchend' in document);
+          if(isiOS){ document.documentElement.setAttribute('data-fpmask',''); }
+        })();
+      `}</Script>
+
+      <body className="antialiased font-sans bg-white text-slate-900">
         <div
           id="app-shell"
           className="min-h-screen isolate bg-[#f5f7fb]"
-          style={{ overscrollBehaviorY: "contain", WebkitUserSelect: "none" }}
+          style={{ overscrollBehaviorY: "contain" }}
         >
           <ClientOnlyHeader />
           <main>{children}</main>
         </div>
+
+        {/* 3) After-interactive: remove the mask after two RAFs, clear any selection/focus */}
+        <Script id="fp-mask-off" strategy="afterInteractive">{`
+          (function(){
+            var html = document.documentElement;
+            if(!html.hasAttribute('data-fpmask')) return;
+            var clearSel = function(){
+              try {
+                var s = window.getSelection && window.getSelection();
+                if(s && s.removeAllRanges) s.removeAllRanges();
+                var ae = document.activeElement; if(ae && ae.blur) ae.blur();
+              } catch(e){}
+            };
+            requestAnimationFrame(function(){
+              requestAnimationFrame(function(){
+                clearSel();
+                html.removeAttribute('data-fpmask');
+              });
+            });
+          })();
+        `}</Script>
       </body>
     </html>
   );
