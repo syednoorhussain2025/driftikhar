@@ -61,7 +61,17 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [isOpen, onClose]);
 
-  /* ---------- Desktop rail (unchanged behavior on lg+) ---------- */
+  // Shared link classes (no underline/border on active)
+  const linkBase =
+    "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all " +
+    "focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/30";
+  const linkActive = "bg-orange-50 text-slate-900"; // background highlight, no bottom border
+  const linkIdle = "text-slate-700 hover:bg-slate-50";
+
+  const iconActive = "bg-orange-500 text-white";
+  const iconIdle = "bg-orange-400 text-white group-hover:bg-orange-500";
+
+  /* ---------- Desktop rail ---------- */
   const DesktopRail = (
     <aside
       suppressHydrationWarning
@@ -79,18 +89,12 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
             <Link
               key={href}
               href={href}
-              className={`group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all ${
-                active
-                  ? "border-b-2 border-orange-500 text-slate-900"
-                  : "text-slate-700 hover:bg-slate-50"
-              }`}
+              className={`${linkBase} ${active ? linkActive : linkIdle}`}
               aria-current={active ? "page" : undefined}
             >
               <span
                 className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors ${
-                  active
-                    ? "bg-orange-500 text-white"
-                    : "bg-orange-400 text-white group-hover:bg-orange-500"
+                  active ? iconActive : iconIdle
                 }`}
               >
                 <FontAwesomeIcon icon={icon} size="sm" />
@@ -143,7 +147,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           <button
             ref={closeBtnRef}
             onClick={onClose}
-            className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-slate-100"
+            className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/30"
             aria-label="Close menu"
           >
             <FontAwesomeIcon icon={faXmark} />
@@ -157,19 +161,13 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
               <Link
                 key={href}
                 href={href}
-                onClick={onClose} // close drawer after navigation
-                className={`group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all ${
-                  active
-                    ? "border-b-2 border-orange-500 text-slate-900"
-                    : "text-slate-700 hover:bg-slate-50"
-                }`}
+                onClick={onClose}
+                className={`${linkBase} ${active ? linkActive : linkIdle}`}
                 aria-current={active ? "page" : undefined}
               >
                 <span
                   className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors ${
-                    active
-                      ? "bg-orange-500 text-white"
-                      : "bg-orange-400 text-white group-hover:bg-orange-500"
+                    active ? iconActive : iconIdle
                   }`}
                 >
                   <FontAwesomeIcon icon={icon} size="sm" />
