@@ -1,9 +1,8 @@
 // src/app/dashboard/layout.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PatientProvider } from "./_context/PatientContext";
-import Header from "@/components/Header";
 import Sidebar from "@/components/Sidebar";
 
 export default function DashboardLayout({
@@ -13,19 +12,22 @@ export default function DashboardLayout({
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Open the sidebar when the global header's burger is clicked
+  useEffect(() => {
+    const handler = () => setSidebarOpen(true);
+    window.addEventListener("open-dashboard-sidebar", handler);
+    return () => window.removeEventListener("open-dashboard-sidebar", handler);
+  }, []);
+
   return (
     <PatientProvider>
       <div className="min-h-screen bg-[#f5f7fb]">
-        {/* Header (burger only in app area) */}
-        <Header onOpenSidebar={() => setSidebarOpen(true)} />
-
         {/* Sidebar:
-            - Mobile: drawer (state-controlled)
+            - Mobile: drawer (state-controlled via global header event)
             - Desktop: fixed rail (lg+) */}
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-        {/* Desktop rail offset.
-           Add overflow guards so children can't cause horizontal scroll. */}
+        {/* Keep content offset for desktop rail and prevent horizontal overflow */}
         <div className="lg:pl-72">
           <main
             role="main"
