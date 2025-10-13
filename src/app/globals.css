@@ -97,6 +97,18 @@ footer,
 }
 
 /* ------------------------------------------------------------ */
+/* Neutralize platform blue on auto-detected/tel links          */
+/* ------------------------------------------------------------ */
+/* Prevent first-paint blue for phone/email links on iOS/WebKit */
+a[href^="tel:"],
+a[href^="mailto:"],
+a[href^="sms:"] {
+  color: inherit !important;
+  text-decoration: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+/* ------------------------------------------------------------ */
 /* Responsive & overflow safety                                 */
 /* ------------------------------------------------------------ */
 

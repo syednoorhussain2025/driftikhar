@@ -1,4 +1,3 @@
-// src/app/layout.tsx
 import type { Metadata } from "next";
 import { Lato, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -8,18 +7,23 @@ import ClientOnlyHeader from "@/components/ClientOnlyHeader";
 export const metadata: Metadata = {
   title: "Dr Iftikhar",
   description: "Health records and dashboard",
-  // Helps iOS/Chrome-iOS avoid blue overpaint in the status bar/top area
   themeColor: "#ffffff",
   viewport: {
     width: "device-width",
     initialScale: 1,
-    viewportFit: "cover", // use full safe area on iOS
+    viewportFit: "cover",
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
   },
   colorScheme: "light",
+  /** ⬇️ Prevent iOS/Chrome-iOS from auto-linking phone numbers (blue on first paint) */
+  formatDetection: {
+    telephone: false,
+    address: false,
+    email: false,
+  },
 };
 
 const lato = Lato({
@@ -42,28 +46,22 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${lato.variable} ${geistSans.variable} ${geistMono.variable}`}
+      /** Extra guard before CSS loads */
+      style={{ WebkitTapHighlightColor: "transparent" }}
     >
       <body
         className="antialiased font-sans bg-white text-slate-900"
-        // Extra guard at the shell level (in addition to globals.css)
         style={{
           WebkitTapHighlightColor: "transparent",
           WebkitTextSizeAdjust: "100%",
         }}
       >
-        {/* App shell with solid background + overscroll containment */}
         <div
           id="app-shell"
           className="min-h-screen isolate bg-[#f5f7fb]"
-          style={{
-            // Reduce pull-to-refresh overpaint; iOS respects this on the element
-            overscrollBehaviorY: "contain",
-          }}
+          style={{ overscrollBehaviorY: "contain" }}
         >
-          {/* Global header should render on a solid background; Header.tsx uses bg-white */}
           <ClientOnlyHeader />
-
-          {/* Main content area; keep simple here, individual pages can manage their own containers */}
           <main>{children}</main>
         </div>
       </body>
