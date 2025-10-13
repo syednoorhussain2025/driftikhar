@@ -179,7 +179,7 @@ export default function DashboardPage() {
   const [showAddBP, setShowAddBP] = useState(false);
 
   // Defaults: last 90 days, and UI type = all
-  const [rangeDays, setRangeDays] = useState<30 | 60 | 90 | 180 | 365 | 0>(90);
+  the const [rangeDays, setRangeDays] = useState<30 | 60 | 90 | 180 | 365 | 0>(90);
   const [type, setType] = useState<UiType>("all");
 
   // Custom dates
@@ -435,55 +435,56 @@ export default function DashboardPage() {
       <main className="mt-6 grid gap-6 lg:grid-cols-2">
         {/* LEFT COLUMN: Time selector + HbA1c + KPIs */}
         <div className="space-y-4 min-w-0">
-          {/* Time selector */}
-          <section className="w-full max-w-full overflow-hidden rounded-2xl bg-amber-50 p-4 shadow-sm ring-1 ring-amber-200">
-            <div className="flex items-center gap-2 text-sm">
-              <div className="font-medium text-amber-900 shrink-0">
+          {/* Time selector (NO SCROLL; wraps) */}
+          <section className="w-full max-w-full rounded-2xl bg-amber-50 p-4 shadow-sm ring-1 ring-amber-200">
+            <div className="flex items-start gap-3 text-sm">
+              <div className="font-medium text-amber-900 shrink-0 pt-1">
                 Time range
               </div>
-              <div className="-mx-4 px-4 hx">
-                <div className="flex items-center gap-2 w-max">
-                  {[30, 60, 90, 180, 365].map((d) => (
-                    <button
-                      key={d}
-                      onClick={() => {
-                        setRangeDays(d as 30 | 60 | 90 | 180 | 365);
-                        clearCustom();
-                      }}
-                      className={`rounded-full px-3 py-1 ring-1 transition focus:outline-none focus:ring-2 ${
-                        !usingCustom && rangeDays === d
-                          ? "bg-amber-600 text-white ring-amber-600"
-                          : "bg-white text-amber-900 ring-amber-300 hover:bg-amber-100"
-                      }`}
-                      aria-pressed={!usingCustom && rangeDays === d}
-                    >
-                      {d}d
-                    </button>
-                  ))}
+              <div className="flex flex-wrap items-center gap-2">
+                {[30, 60, 90, 180, 365].map((d) => (
                   <button
+                    key={d}
                     onClick={() => {
-                      setRangeDays(0);
+                      setRangeDays(d as 30 | 60 | 90 | 180 | 365);
                       clearCustom();
                     }}
                     className={`rounded-full px-3 py-1 ring-1 transition focus:outline-none focus:ring-2 ${
-                      !usingCustom && rangeDays === 0
+                      !usingCustom && rangeDays === d
                         ? "bg-amber-600 text-white ring-amber-600"
                         : "bg-white text-amber-900 ring-amber-300 hover:bg-amber-100"
                     }`}
-                    aria-pressed={!usingCustom && rangeDays === 0}
+                    aria-pressed={!usingCustom && rangeDays === d}
                   >
-                    all
+                    {d}d
                   </button>
-                  <button
-                    onClick={() => setShowCustom(true)}
-                    className="ml-2 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 ring-1 ring-amber-300 text-amber-900 hover:bg-amber-100 focus:outline-none focus:ring-2"
-                    title="Custom date range"
-                    aria-expanded={showCustom}
-                  >
-                    <FontAwesomeIcon icon={faCalendarDays} />
-                    Custom
-                  </button>
-                </div>
+                ))}
+                <button
+                  onClick={() => {
+                    setRangeDays(0);
+                    clearCustom();
+                  }}
+                  className={`rounded-full px-3 py-1 ring-1 transition focus:outline-none focus:ring-2 ${
+                    !usingCustom && rangeDays === 0
+                      ? "bg-amber-600 text-white ring-amber-600"
+                      : "bg-white text-amber-900 ring-amber-300 hover:bg-amber-100"
+                  }`}
+                  aria-pressed={!usingCustom && rangeDays === 0}
+                >
+                  all
+                </button>
+                <button
+                  onClick={() => setShowCustom(true)}
+                  className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 ring-1 ring-amber-300 text-amber-900 hover:bg-amber-100 focus:outline-none focus:ring-2"
+                  title="Custom date range"
+                  aria-expanded={showCustom}
+                >
+                  <FontAwesomeIcon icon={faCalendarDays} />
+                  Custom
+                </button>
+                <span className="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900 ring-1 ring-amber-200">
+                  {rangeLabel}
+                </span>
               </div>
             </div>
           </section>
@@ -502,9 +503,6 @@ export default function DashboardPage() {
                 <FontAwesomeIcon icon={faFlask} />
                 HbA1c (estimated)
               </div>
-              <span className="rounded-full bg-white/70 px-2 py-0.5 text-xs font-medium text-slate-700 ring-1 ring-slate-200">
-                {rangeLabel}
-              </span>
             </div>
 
             <div className="mt-3">
@@ -557,32 +555,30 @@ export default function DashboardPage() {
 
         {/* RIGHT COLUMN: Type selector + Graph */}
         <div className="space-y-4 min-w-0">
-          {/* Type pills with icons (row) */}
-          <section className="w-full max-w-full overflow-hidden rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/60">
-            <div className="flex items-center gap-3 text-sm">
-              <span className="text-slate-600 shrink-0">Type:</span>
-              <div className="-mx-4 px-4 hx">
-                <div className="flex items-center gap-2 w-max">
-                  {UI_TYPES.map(({ value, label, icon }) => {
-                    const active = type === value;
-                    return (
-                      <button
-                        key={value}
-                        onClick={() => setType(value)}
-                        className={[
-                          "inline-flex items-center gap-2 rounded-full px-3 py-1 ring-1 transition focus:outline-none focus:ring-2",
-                          active
-                            ? "bg-emerald-600 text-white ring-emerald-600"
-                            : "bg-white text-slate-700 ring-slate-300 hover:bg-slate-100",
-                        ].join(" ")}
-                        aria-pressed={active}
-                      >
-                        <FontAwesomeIcon icon={icon} className="text-[12px]" />
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
+          {/* Type pills (NO SCROLL; wraps) */}
+          <section className="w-full max-w-full rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/60">
+            <div className="flex items-start gap-3 text-sm">
+              <span className="text-slate-600 shrink-0 pt-1">Type:</span>
+              <div className="flex flex-wrap items-center gap-2">
+                {UI_TYPES.map(({ value, label, icon }) => {
+                  const active = type === value;
+                  return (
+                    <button
+                      key={value}
+                      onClick={() => setType(value)}
+                      className={[
+                        "inline-flex items-center gap-2 rounded-full px-3 py-1 ring-1 transition focus:outline-none focus:ring-2",
+                        active
+                          ? "bg-emerald-600 text-white ring-emerald-600"
+                          : "bg-white text-slate-700 ring-slate-300 hover:bg-slate-100",
+                      ].join(" ")}
+                      aria-pressed={active}
+                    >
+                      <FontAwesomeIcon icon={icon} className="text-[12px]" />
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </section>
@@ -599,23 +595,9 @@ export default function DashboardPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={segmentedSeries}>
                       <defs>
-                        <linearGradient
-                          id="a1cFill"
-                          x1="0"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop
-                            offset="0%"
-                            stopColor="#60a5fa"
-                            stopOpacity={0.25}
-                          />
-                          <stop
-                            offset="100%"
-                            stopColor="#60a5fa"
-                            stopOpacity={0}
-                          />
+                        <linearGradient id="a1cFill" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#60a5fa" stopOpacity={0.25} />
+                          <stop offset="100%" stopColor="#60a5fa" stopOpacity={0} />
                         </linearGradient>
                       </defs>
 
@@ -654,16 +636,8 @@ export default function DashboardPage() {
                         opacity={0.06}
                       />
 
-                      <ReferenceLine
-                        y={5.7}
-                        stroke="#f59e0b"
-                        strokeDasharray="4 4"
-                      />
-                      <ReferenceLine
-                        y={6.5}
-                        stroke="#ef4444"
-                        strokeDasharray="4 4"
-                      />
+                      <ReferenceLine y={5.7} stroke="#f59e0b" strokeDasharray="4 4" />
+                      <ReferenceLine y={6.5} stroke="#ef4444" strokeDasharray="4 4" />
 
                       <Area
                         data={a1cSeries}
@@ -679,12 +653,7 @@ export default function DashboardPage() {
                         dataKey="a1c_green"
                         stroke="#10b981"
                         strokeWidth={3}
-                        dot={{
-                          r: 3,
-                          strokeWidth: 1,
-                          stroke: "#1f2937",
-                          fill: "#fff",
-                        }}
+                        dot={{ r: 3, strokeWidth: 1, stroke: "#1f2937", fill: "#fff" }}
                         activeDot={{ r: 5 }}
                         connectNulls
                         isAnimationActive={false}
@@ -694,12 +663,7 @@ export default function DashboardPage() {
                         dataKey="a1c_red"
                         stroke="#ef4444"
                         strokeWidth={3}
-                        dot={{
-                          r: 3,
-                          strokeWidth: 1,
-                          stroke: "#1f2937",
-                          fill: "#fff",
-                        }}
+                        dot={{ r: 3, strokeWidth: 1, stroke: "#1f2937", fill: "#fff" }}
                         activeDot={{ r: 5 }}
                         connectNulls
                         isAnimationActive={false}
