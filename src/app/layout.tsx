@@ -1,7 +1,9 @@
+// src/app/layout.tsx
 import type { Metadata } from "next";
 import { Lato, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "@/lib/fontawesome";
+import ClientOnlyHeader from "@/components/ClientOnlyHeader";
 
 export const metadata: Metadata = {
   title: "Dr Iftikhar",
@@ -29,7 +31,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans`}
       >
-        {/* Removed <ClientOnlyHeader /> */}
+        {/* Global header (shows on public pages; burger is gated inside Header) */}
+        <ClientOnlyHeader />
         <main>{children}</main>
       </body>
     </html>
