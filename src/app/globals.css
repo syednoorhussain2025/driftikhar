@@ -43,63 +43,72 @@ body {
 }
 
 /* ------------------------------------------------------------ */
-/* iOS/WebKit tap highlight & focus polish (Chrome/Safari iOS)  */
+/* Tap highlight, selection & focus (iOS/WebKit hardening)      */
 /* ------------------------------------------------------------ */
 
-/* 1) Nuke tap highlight everywhere (covers React click targets) */
+/* 1) Remove tap highlight globally (first line of defense) */
 *,
 *::before,
 *::after {
   -webkit-tap-highlight-color: rgba(0, 0, 0, 0) !important;
 }
 
-/* 2) Keep keyboard focus rings; suppress touch-induced outlines */
+/* 2) Suppress touch outlines but keep keyboard focus */
 :focus:not(:focus-visible) {
   outline: none !important;
 }
 
-/* 3) Interactive nodes: faster taps, avoid double-tap zoom highlight */
+/* 3) Global selection OFF to prevent any blue selection paint on refresh */
+html,
+body,
+#__next,
+main,
+header,
+nav,
+section,
+aside,
+article,
+footer,
+div {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
+
+/* 4) Opt-IN selection where needed (forms, code, prose, anything you mark) */
+input,
+textarea,
+select,
+pre,
+code,
+.selectable,
+.prose {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  -webkit-touch-callout: default !important;
+}
+
+/* 5) Even if selection happens briefly, make it invisible */
+::selection {
+  background: transparent !important;
+  color: inherit !important;
+}
+::-moz-selection {
+  background: transparent !important;
+  color: inherit !important;
+}
+
+/* 6) Interactive nodes: faster taps, avoid double-tap zoom highlight */
 a,
 button,
 [role="button"],
 summary,
-input,
-textarea,
-select,
 label {
   -webkit-tap-highlight-color: transparent !important;
   touch-action: manipulation;
 }
 
-/* 4) Common containers that users tap/drag (rounded cards, bars) */
-div,
-section,
-header,
-nav,
-aside,
-main,
-article,
-footer,
-.card,
-.hx,
-.chipbar {
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-  -webkit-tap-highlight-color: transparent !important;
-}
-
-/* Opt-in: re-enable selection where you actually need it (e.g., notes) */
-.selectable,
-.prose {
-  -webkit-user-select: text;
-  user-select: text;
-  -webkit-touch-callout: default;
-}
-
-/* ------------------------------------------------------------ */
-/* Neutralize platform blue on auto-detected/tel links          */
-/* ------------------------------------------------------------ */
-/* Prevent first-paint blue for phone/email links on iOS/WebKit */
+/* 7) Neutralize platform blue on auto-detected links from first paint */
 a[href^="tel:"],
 a[href^="mailto:"],
 a[href^="sms:"] {
@@ -134,11 +143,9 @@ video {
 }
 
 /* Optional helper for debugging overflow sources (disabled by default) */
-/*
-* { outline: 0px solid red; }
-*/
+/* * { outline: 0px solid red; } */
 
 /* ------------------------------------------------------------ */
-/* Tailwind layer (custom components if needed)                  */
+/* Tailwind layer hooks                                         */
 /* ------------------------------------------------------------ */
 /* Add @layer base/components/utilities below if required */
