@@ -13,7 +13,7 @@ const STETHO_SVG =
 export default function Header({
   onOpenSidebar,
 }: {
-  /** optional handler from dashboard layout */
+  /** optional handler (used when Header is local); falls back to global event */
   onOpenSidebar?: () => void;
 }) {
   const router = useRouter();
@@ -90,6 +90,15 @@ export default function Header({
     !!email &&
     (pathname.startsWith("/dashboard") || pathname.startsWith("/admin"));
 
+  // Fallback: if no prop provided (global header), fire a window event the dashboard listens for
+  const openSidebar = () => {
+    if (onOpenSidebar) {
+      onOpenSidebar();
+    } else {
+      window.dispatchEvent(new CustomEvent("open-dashboard-sidebar"));
+    }
+  };
+
   return (
     <header className="sticky top-0 z-40 bg-white/90 backdrop-blur shadow-sm">
       <div className="mx-auto max-w-7xl px-4">
@@ -101,7 +110,7 @@ export default function Header({
                 type="button"
                 className="lg:hidden inline-flex h-10 w-10 items-center justify-center rounded-md hover:bg-slate-100"
                 aria-label="Open menu"
-                onClick={onOpenSidebar}
+                onClick={openSidebar}
               >
                 <FontAwesomeIcon
                   icon={faBars}
