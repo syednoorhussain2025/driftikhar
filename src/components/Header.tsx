@@ -100,7 +100,7 @@ export default function Header({
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white/90 backdrop-blur shadow-sm">
+    <header className="sticky top-0 z-40 bg-white shadow-sm">
       <div className="mx-auto max-w-7xl px-4">
         <div className="flex items-center justify-between gap-4 py-2">
           {/* Left */}
