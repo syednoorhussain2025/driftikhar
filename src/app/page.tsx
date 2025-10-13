@@ -73,7 +73,7 @@ export default function Home() {
           <div className="p-6 sm:p-8">
             <div className="mb-6">
               <h1 className="text-3xl font-semibold text-slate-900">
-                Welcome back
+                Welcome to Dr Ifikhar's Diabetes App
               </h1>
               <p className="mt-2 text-slate-600">
                 {app} — secure diabetes records and quick insights.
