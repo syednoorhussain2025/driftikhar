@@ -188,7 +188,7 @@ export default function DashboardPage() {
   const [showCustom, setShowCustom] = useState<boolean>(false);
   const usingCustom = Boolean(startDate && endDate);
 
-  // Avatar selection (default to male)
+  // Avatar
   const avatarUrl = useMemo(() => {
     const g = (demographics?.gender ?? "").toString().toLowerCase();
     return g.includes("female") ? FEMALE_AVATAR : MALE_AVATAR;
@@ -363,9 +363,7 @@ export default function DashboardPage() {
       {/* Header card */}
       <section className="w-full max-w-full overflow-hidden rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between min-w-0">
-          {/* Left: Avatar + name/info */}
           <div className="flex items-start gap-4 min-w-0">
-            {/* Avatar */}
             <div className="shrink-0 h-28 w-28 rounded-full ring-2 ring-amber-300 p-0.5 bg-white overflow-hidden">
               <img
                 src={avatarUrl}
@@ -373,8 +371,6 @@ export default function DashboardPage() {
                 className="h-full w-full rounded-full object-cover origin-center scale-[1.2]"
               />
             </div>
-
-            {/* Name & pills */}
             <div className="min-w-0">
               <div className="flex flex-wrap gap-2 text-xs">
                 <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono ring-1 ring-slate-200 text-slate-800">
@@ -400,7 +396,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Right: CTAs (wrap on mobile) */}
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
@@ -431,296 +426,270 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Main layout */}
-      <main className="mt-6 grid gap-6 lg:grid-cols-2">
-        {/* LEFT: type pills + graph */}
-        <div className="space-y-4 min-w-0">
-          {/* Type pills with icons (scrollable row on mobile) */}
-          <section className="w-full max-w-full overflow-hidden rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/60">
-            <div className="flex items-center gap-3 text-sm">
-              <span className="text-slate-600 shrink-0">Type:</span>
-              <div className="-mx-4 px-4 hx">
-                <div className="flex items-center gap-2 w-max">
-                  {UI_TYPES.map(({ value, label, icon }) => {
-                    const active = type === value;
-                    return (
-                      <button
-                        key={value}
-                        onClick={() => setType(value)}
-                        className={[
-                          "inline-flex items-center gap-2 rounded-full px-3 py-1 ring-1 transition focus:outline-none focus:ring-2",
-                          active
-                            ? "bg-emerald-600 text-white ring-emerald-600"
-                            : "bg-white text-slate-700 ring-slate-300 hover:bg-slate-100",
-                        ].join(" ")}
-                        aria-pressed={active}
-                      >
-                        <FontAwesomeIcon icon={icon} className="text-[12px]" />
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+      {/* ───────────────────── Flattened grid ───────────────────── */}
+      <main className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Type selector – wraps on mobile; left column on desktop */}
+        <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/60 order-1 lg:order-1 lg:col-start-1">
+          <div className="text-sm text-slate-600 mb-2">Type:</div>
+          <div className="flex flex-wrap gap-2">
+            {UI_TYPES.map(({ value, label, icon }) => {
+              const active = type === value;
+              return (
+                <button
+                  key={value}
+                  onClick={() => setType(value)}
+                  className={[
+                    "inline-flex items-center gap-2 rounded-full px-3 py-1 ring-1 transition focus:outline-none focus:ring-2 whitespace-nowrap",
+                    active
+                      ? "bg-emerald-600 text-white ring-emerald-600"
+                      : "bg-white text-slate-700 ring-slate-300 hover:bg-slate-100",
+                  ].join(" ")}
+                  aria-pressed={active}
+                >
+                  <FontAwesomeIcon icon={icon} className="text-[12px]" />
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Time selector – wraps on mobile; right column on desktop */}
+        <section className="rounded-2xl bg-amber-50 p-4 shadow-sm ring-1 ring-amber-200 order-2 lg:order-1 lg:col-start-2">
+          <div className="text-sm font-medium text-amber-900 mb-2">
+            Time range
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {[30, 60, 90, 180, 365].map((d) => (
+              <button
+                key={d}
+                onClick={() => {
+                  setRangeDays(d as 30 | 60 | 90 | 180 | 365);
+                  clearCustom();
+                }}
+                className={`rounded-full px-3 py-1 ring-1 transition focus:outline-none focus:ring-2 whitespace-nowrap ${
+                  !usingCustom && rangeDays === d
+                    ? "bg-amber-600 text-white ring-amber-600"
+                    : "bg-white text-amber-900 ring-amber-300 hover:bg-amber-100"
+                }`}
+                aria-pressed={!usingCustom && rangeDays === d}
+              >
+                {d}d
+              </button>
+            ))}
+            <button
+              onClick={() => {
+                setRangeDays(0);
+                clearCustom();
+              }}
+              className={`rounded-full px-3 py-1 ring-1 transition focus:outline-none focus:ring-2 whitespace-nowrap ${
+                !usingCustom && rangeDays === 0
+                  ? "bg-amber-600 text-white ring-amber-600"
+                  : "bg-white text-amber-900 ring-amber-300 hover:bg-amber-100"
+              }`}
+              aria-pressed={!usingCustom && rangeDays === 0}
+            >
+              all
+            </button>
+            <button
+              onClick={() => setShowCustom(true)}
+              className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 ring-1 ring-amber-300 text-amber-900 hover:bg-amber-100 focus:outline-none focus:ring-2 whitespace-nowrap"
+              title="Custom date range"
+              aria-expanded={showCustom}
+            >
+              <FontAwesomeIcon icon={faCalendarDays} />
+              Custom
+            </button>
+          </div>
+        </section>
+
+        {/* HbA1c card – right column on desktop */}
+        <section
+          className={[
+            "rounded-2xl p-5 shadow-sm ring-1 min-h-[240px] order-3 lg:order-2 lg:col-start-2",
+            Number.isFinite(a1c) && a1c < 5.7
+              ? "bg-emerald-50 ring-emerald-200"
+              : "bg-rose-50 ring-rose-200",
+          ].join(" ")}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <FontAwesomeIcon icon={faFlask} />
+              HbA1c (estimated)
             </div>
-          </section>
+            <span className="rounded-full bg-white/70 px-2 py-0.5 text-xs font-medium text-slate-700 ring-1 ring-slate-200">
+              {rangeLabel}
+            </span>
+          </div>
 
-          {/* Graph */}
-          <section className="w-full max-w-full overflow-hidden rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60">
-            {a1cSeries.length === 0 ? (
-              <div className="text-sm text-slate-600">
-                No readings in the selected range/type.
-              </div>
-            ) : (
-              <>
-                <div className="h-64 w-full min-w-0">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={segmentedSeries}>
-                      <defs>
-                        <linearGradient
-                          id="a1cFill"
-                          x1="0"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop
-                            offset="0%"
-                            stopColor="#60a5fa"
-                            stopOpacity={0.25}
-                          />
-                          <stop
-                            offset="100%"
-                            stopColor="#60a5fa"
-                            stopOpacity={0}
-                          />
-                        </linearGradient>
-                      </defs>
+          <div className="mt-3">
+            <span className="rounded-full bg-white/70 px-2 py-0.5 text-xs font-medium text-slate-700 ring-1 ring-slate-200">
+              {selectedTypeLabel}
+            </span>
+          </div>
 
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis
-                        dataKey="t"
-                        tick={{ fill: "#334155", fontSize: 12 }}
-                        tickFormatter={(v: Date) => dateTick(v)}
-                      />
-                      <YAxis
-                        domain={[4, "auto"]}
-                        tick={{ fill: "#334155", fontSize: 12 }}
-                        tickFormatter={(v) => `${(v as number).toFixed(1)}%`}
-                      />
-                      <Tooltip content={<A1cTooltip />} />
-
-                      <ReferenceArea
-                        y1={4.0}
-                        y2={5.7}
-                        ifOverflow="extendDomain"
-                        fill="#10b981"
-                        opacity={0.1}
-                      />
-                      <ReferenceArea
-                        y1={5.7}
-                        y2={6.5}
-                        ifOverflow="extendDomain"
-                        fill="#f59e0b"
-                        opacity={0.08}
-                      />
-                      <ReferenceArea
-                        y1={6.5}
-                        y2={12.0}
-                        ifOverflow="extendDomain"
-                        fill="#ef4444"
-                        opacity={0.06}
-                      />
-
-                      <ReferenceLine
-                        y={5.7}
-                        stroke="#f59e0b"
-                        strokeDasharray="4 4"
-                      />
-                      <ReferenceLine
-                        y={6.5}
-                        stroke="#ef4444"
-                        strokeDasharray="4 4"
-                      />
-
-                      <Area
-                        data={a1cSeries}
-                        type="monotone"
-                        dataKey="a1c"
-                        stroke="none"
-                        fill="url(#a1cFill)"
-                        isAnimationActive={false}
-                      />
-
-                      <Line
-                        type="monotone"
-                        dataKey="a1c_green"
-                        stroke="#10b981"
-                        strokeWidth={3}
-                        dot={{
-                          r: 3,
-                          strokeWidth: 1,
-                          stroke: "#1f2937",
-                          fill: "#fff",
-                        }}
-                        activeDot={{ r: 5 }}
-                        connectNulls
-                        isAnimationActive={false}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="a1c_red"
-                        stroke="#ef4444"
-                        strokeWidth={3}
-                        dot={{
-                          r: 3,
-                          strokeWidth: 1,
-                          stroke: "#1f2937",
-                          fill: "#fff",
-                        }}
-                        activeDot={{ r: 5 }}
-                        connectNulls
-                        isAnimationActive={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-
-                <div className="mt-3 flex items-center justify-start">
-                  <a
-                    href="/dashboard/graphs"
-                    className="inline-flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-2 text-xs font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-400"
-                  >
-                    <FontAwesomeIcon icon={faArrowUpRightFromSquare} />
-                    Open graphs
-                  </a>
-                </div>
-              </>
-            )}
-          </section>
-        </div>
-
-        {/* RIGHT: time range, HbA1c, KPIs */}
-        <div className="space-y-4 min-w-0">
-          {/* Time selector (scrollable row) */}
-          <section className="w-full max-w-full overflow-hidden rounded-2xl bg-amber-50 p-4 shadow-sm ring-1 ring-amber-200">
-            <div className="flex items-center gap-2 text-sm">
-              <div className="font-medium text-amber-900 shrink-0">
-                Time range
-              </div>
-              <div className="-mx-4 px-4 hx">
-                <div className="flex items-center gap-2 w-max">
-                  {[30, 60, 90, 180, 365].map((d) => (
-                    <button
-                      key={d}
-                      onClick={() => {
-                        setRangeDays(d as 30 | 60 | 90 | 180 | 365);
-                        clearCustom();
-                      }}
-                      className={`rounded-full px-3 py-1 ring-1 transition focus:outline-none focus:ring-2 ${
-                        !usingCustom && rangeDays === d
-                          ? "bg-amber-600 text-white ring-amber-600"
-                          : "bg-white text-amber-900 ring-amber-300 hover:bg-amber-100"
-                      }`}
-                      aria-pressed={!usingCustom && rangeDays === d}
-                    >
-                      {d}d
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => {
-                      setRangeDays(0);
-                      clearCustom();
-                    }}
-                    className={`rounded-full px-3 py-1 ring-1 transition focus:outline-none focus:ring-2 ${
-                      !usingCustom && rangeDays === 0
-                        ? "bg-amber-600 text-white ring-amber-600"
-                        : "bg-white text-amber-900 ring-amber-300 hover:bg-amber-100"
-                    }`}
-                    aria-pressed={!usingCustom && rangeDays === 0}
-                  >
-                    all
-                  </button>
-                  <button
-                    onClick={() => setShowCustom(true)}
-                    className="ml-2 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 ring-1 ring-amber-300 text-amber-900 hover:bg-amber-100 focus:outline-none focus:ring-2"
-                    title="Custom date range"
-                    aria-expanded={showCustom}
-                  >
-                    <FontAwesomeIcon icon={faCalendarDays} />
-                    Custom
-                  </button>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* HbA1c card (with Average BP footer) */}
-          <section
+          <div
             className={[
-              "w-full max-w-full overflow-hidden rounded-2xl p-5 shadow-sm ring-1 min-h-[240px]",
+              "mt-3 text-6xl font-semibold tabular-nums leading-none",
               Number.isFinite(a1c) && a1c < 5.7
-                ? "bg-emerald-50 ring-emerald-200"
-                : "bg-rose-50 ring-rose-200",
+                ? "text-emerald-700"
+                : "text-rose-700",
             ].join(" ")}
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <FontAwesomeIcon icon={faFlask} />
-                HbA1c (estimated)
-              </div>
-              <span className="rounded-full bg-white/70 px-2 py-0.5 text-xs font-medium text-slate-700 ring-1 ring-slate-200">
-                {rangeLabel}
-              </span>
-            </div>
-
-            <div className="mt-3">
-              <span className="rounded-full bg-white/70 px-2 py-0.5 text-xs font-medium text-slate-700 ring-1 ring-slate-200">
-                {selectedTypeLabel}
-              </span>
-            </div>
-
-            <div
-              className={[
-                "mt-3 text-6xl font-semibold tabular-nums leading-none",
-                Number.isFinite(a1c) && a1c < 5.7
-                  ? "text-emerald-700"
-                  : "text-rose-700",
-              ].join(" ")}
-            >
-              {format(a1c, 1)}%
-            </div>
-
-            <div className="mt-3 text-sm text-slate-800">{a1cNote}</div>
-
-            <div className="mt-4 pt-3 border-t border-slate-200/70 text-sm flex items-center justify-between">
-              <span className="text-slate-700 font-medium">
-                Average Blood Pressure
-              </span>
-              <span className="tabular-nums text-slate-900">
-                {Number.isFinite(avgSys) && Number.isFinite(avgDia)
-                  ? `${Math.round(avgSys)}/${Math.round(avgDia)} mmHg`
-                  : "—"}
-              </span>
-            </div>
-          </section>
-
-          {/* KPIs */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <KPI
-              icon={faChartLine}
-              title="Mean glucose (mg/dL)"
-              value={format(meanMgdl, 0)}
-              tone="slate"
-            />
-            <KPI
-              icon={faNotesMedical}
-              title="Readings"
-              value={String(count)}
-              tone="slate"
-            />
+            {format(a1c, 1)}%
           </div>
+
+          <div className="mt-3 text-sm text-slate-800">{a1cNote}</div>
+
+          <div className="mt-4 pt-3 border-t border-slate-200/70 text-sm flex items-center justify-between">
+            <span className="text-slate-700 font-medium">
+              Average Blood Pressure
+            </span>
+            <span className="tabular-nums text-slate-900">
+              {Number.isFinite(avgSys) && Number.isFinite(avgDia)
+                ? `${Math.round(avgSys)}/${Math.round(avgDia)} mmHg`
+                : "—"}
+            </span>
+          </div>
+        </section>
+
+        {/* KPIs – right column on desktop */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 order-4 lg:order-3 lg:col-start-2">
+          <KPI
+            icon={faChartLine}
+            title="Mean glucose (mg/dL)"
+            value={format(meanMgdl, 0)}
+          />
+          <KPI icon={faNotesMedical} title="Readings" value={String(count)} />
         </div>
+
+        {/* Graph – LAST on mobile; left column on desktop */}
+        <section className="w-full max-w-full overflow-hidden rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 order-5 lg:order-2 lg:col-start-1">
+          {a1cSeries.length === 0 ? (
+            <div className="text-sm text-slate-600">
+              No readings in the selected range/type.
+            </div>
+          ) : (
+            <>
+              <div className="h-64 w-full min-w-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={segmentedSeries}>
+                    <defs>
+                      <linearGradient id="a1cFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop
+                          offset="0%"
+                          stopColor="#60a5fa"
+                          stopOpacity={0.25}
+                        />
+                        <stop
+                          offset="100%"
+                          stopColor="#60a5fa"
+                          stopOpacity={0}
+                        />
+                      </linearGradient>
+                    </defs>
+
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="t"
+                      tick={{ fill: "#334155", fontSize: 12 }}
+                      tickFormatter={(v: Date) => dateTick(v)}
+                    />
+                    <YAxis
+                      domain={[4, "auto"]}
+                      tick={{ fill: "#334155", fontSize: 12 }}
+                      tickFormatter={(v) => `${(v as number).toFixed(1)}%`}
+                    />
+                    <Tooltip content={<A1cTooltip />} />
+
+                    <ReferenceArea
+                      y1={4.0}
+                      y2={5.7}
+                      ifOverflow="extendDomain"
+                      fill="#10b981"
+                      opacity={0.1}
+                    />
+                    <ReferenceArea
+                      y1={5.7}
+                      y2={6.5}
+                      ifOverflow="extendDomain"
+                      fill="#f59e0b"
+                      opacity={0.08}
+                    />
+                    <ReferenceArea
+                      y1={6.5}
+                      y2={12.0}
+                      ifOverflow="extendDomain"
+                      fill="#ef4444"
+                      opacity={0.06}
+                    />
+
+                    <ReferenceLine
+                      y={5.7}
+                      stroke="#f59e0b"
+                      strokeDasharray="4 4"
+                    />
+                    <ReferenceLine
+                      y={6.5}
+                      stroke="#ef4444"
+                      strokeDasharray="4 4"
+                    />
+
+                    <Area
+                      data={a1cSeries}
+                      type="monotone"
+                      dataKey="a1c"
+                      stroke="none"
+                      fill="url(#a1cFill)"
+                      isAnimationActive={false}
+                    />
+
+                    <Line
+                      type="monotone"
+                      dataKey="a1c_green"
+                      stroke="#10b981"
+                      strokeWidth={3}
+                      dot={{
+                        r: 3,
+                        strokeWidth: 1,
+                        stroke: "#1f2937",
+                        fill: "#fff",
+                      }}
+                      activeDot={{ r: 5 }}
+                      connectNulls
+                      isAnimationActive={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="a1c_red"
+                      stroke="#ef4444"
+                      strokeWidth={3}
+                      dot={{
+                        r: 3,
+                        strokeWidth: 1,
+                        stroke: "#1f2937",
+                        fill: "#fff",
+                      }}
+                      activeDot={{ r: 5 }}
+                      connectNulls
+                      isAnimationActive={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="mt-3 flex items-center justify-start">
+                <a
+                  href="/dashboard/graphs"
+                  className="inline-flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-2 text-xs font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                >
+                  <FontAwesomeIcon icon={faArrowUpRightFromSquare} />
+                  Open graphs
+                </a>
+              </div>
+            </>
+          )}
+        </section>
       </main>
 
       {/* Note */}
