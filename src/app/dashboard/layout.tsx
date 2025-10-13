@@ -43,7 +43,6 @@ export default function DashboardLayout({
     const onChange = (e: MediaQueryListEvent) => {
       if (e.matches) setSidebarOpen(false);
     };
-    // Current state on mount
     if (mq.matches) setSidebarOpen(false);
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
@@ -51,21 +50,30 @@ export default function DashboardLayout({
 
   return (
     <PatientProvider>
-      <div className="min-h-screen bg-[#f5f7fb]">
+      {/* Dashboard shell:
+          - isolated stacking context to avoid highlight bleed
+          - overscroll containment to reduce iOS/Chrome-iOS overpaint
+          - solid background surface */}
+      <div
+        id="dashboard-shell"
+        className="min-h-screen isolate bg-[#f5f7fb] lg:pl-72"
+        style={{
+          overscrollBehaviorY: "contain",
+          WebkitTapHighlightColor: "transparent",
+        }}
+      >
         {/* Sidebar:
             - Mobile: drawer (opened via global header event)
             - Desktop: fixed rail (lg+) */}
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-        {/* Keep content offset for desktop rail and prevent horizontal overflow */}
-        <div className="lg:pl-72">
-          <main
-            role="main"
-            className="mx-auto max-w-7xl px-4 py-6 overflow-hidden min-w-0"
-          >
-            {children}
-          </main>
-        </div>
+        {/* Content area; prevent horizontal overflow without clipping vertical scroll */}
+        <main
+          role="main"
+          className="mx-auto max-w-7xl px-4 py-6 min-w-0 overflow-x-hidden"
+        >
+          {children}
+        </main>
       </div>
     </PatientProvider>
   );
