@@ -74,44 +74,79 @@ export default function AdminHome() {
     setReadings([]);
     setLoadingList(true);
 
-    const { data, error } = await supabase
+    const map = new Map<string, Row>();
+
+    // Query 1: patients by patient_code (flat, no join to avoid RLS stack depth)
+    const { data: byCode, error: e1 } = await supabase
       .from("patients")
-      .select("id, patient_code, patient_demographics(full_name, city)")
+      .select("id, patient_code")
       .ilike("patient_code", `%${term}%`);
-    if (error) {
+    if (e1) {
       setLoadingList(false);
-      alert(error.message);
+      alert(e1.message);
       return;
     }
-
-    const d2 = await supabase
-      .from("patient_demographics")
-      .select("patient_id, full_name, city")
-      .ilike("full_name", `%${term}%`);
-
-    const map = new Map<string, Row>();
-    (data || []).forEach((p: any) =>
+    (byCode || []).forEach((p: any) =>
       map.set(p.id, {
         id: p.id,
         patient_code: p.patient_code,
-        full_name: p.patient_demographics?.full_name ?? null,
-        city: p.patient_demographics?.city ?? null,
+        full_name: null,
+        city: null,
       })
     );
-    (d2?.data || []).forEach((d: any) => {
-      if (map.has(d.patient_id)) {
-        const r = map.get(d.patient_id)!;
-        r.full_name = r.full_name ?? d.full_name;
-        r.city = r.city ?? d.city;
-      } else {
-        map.set(d.patient_id, {
-          id: d.patient_id,
-          patient_code: "",
-          full_name: d.full_name,
-          city: d.city,
-        });
-      }
+
+    // Query 2: patient_demographics by full_name
+    const { data: byName, error: e2 } = await supabase
+      .from("patient_demographics")
+      .select("patient_id, full_name, city")
+      .ilike("full_name", `%${term}%`);
+    if (e2) {
+      setLoadingList(false);
+      alert(e2.message);
+      return;
+    }
+
+    // Query 3: fetch demographics for all patients found by code
+    const patientIds = Array.from(map.keys());
+    if (patientIds.length > 0) {
+      const { data: demoForCode } = await supabase
+        .from("patient_demographics")
+        .select("patient_id, full_name, city")
+        .in("patient_id", patientIds);
+      (demoForCode || []).forEach((d: any) => {
+        const row = map.get(d.patient_id);
+        if (row) {
+          row.full_name = d.full_name ?? null;
+          row.city = d.city ?? null;
+        }
+      });
+    }
+
+    // Merge name-search results
+    (byName || []).forEach((d: any) => {
+      if (map.has(d.patient_id)) return; // already have it
+      map.set(d.patient_id, {
+        id: d.patient_id,
+        patient_code: "",
+        full_name: d.full_name,
+        city: d.city,
+      });
     });
+
+    // For name-search results that don't have a patient_code yet, fetch it
+    const missingCodeIds = Array.from(map.values())
+      .filter((r) => r.patient_code === "")
+      .map((r) => r.id);
+    if (missingCodeIds.length > 0) {
+      const { data: patients } = await supabase
+        .from("patients")
+        .select("id, patient_code")
+        .in("id", missingCodeIds);
+      (patients || []).forEach((p: any) => {
+        const row = map.get(p.id);
+        if (row) row.patient_code = p.patient_code;
+      });
+    }
 
     setRows(Array.from(map.values()));
     setLoadingList(false);
