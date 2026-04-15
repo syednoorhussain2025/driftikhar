@@ -404,7 +404,10 @@ export default function AdminPatientReadings() {
         <AddSugarModal
           patientId={patientId}
           reading={selected ?? undefined}
-          onClose={closeAndRefresh}
+          onClose={() => {
+            setShowModal(false);
+            setSelected(null);
+          }}
           onSaved={closeAndRefresh}
         />
       )}

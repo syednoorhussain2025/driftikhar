@@ -50,10 +50,8 @@ export default function AddBPModal({
   function asUTC(dateStr: string, timeStr: string): string {
     const [y, m, d] = dateStr.split("-").map(Number);
     const [hh, mm] = timeStr.split(":").map(Number);
-    const local = new Date(y, (m ?? 1) - 1, d ?? 1, hh ?? 0, mm ?? 0, 0, 0);
-    return new Date(
-      local.getTime() - local.getTimezoneOffset() * 60000
-    ).toISOString();
+    // new Date(y, m-1, d, hh, mm) is already in local time; .toISOString() converts to UTC correctly
+    return new Date(y, (m ?? 1) - 1, d ?? 1, hh ?? 0, mm ?? 0, 0, 0).toISOString();
   }
 
   /** ISO UTC -> local YYYY-MM-DD & HH:MM */

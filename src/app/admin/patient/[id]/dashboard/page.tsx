@@ -595,7 +595,7 @@ export default function AdminPatientDashboard() {
                 {/* Graph footer actions (optional admin graphs route; adjust if needed) */}
                 <div className="mt-3 flex items-center justify-start">
                   <a
-                    href={`/admin/patients/${patientId}/graphs`}
+                    href={`/admin/patient/${patientId}/graphs`}
                     className="inline-flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-2 text-xs font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-400"
                   >
                     <FontAwesomeIcon icon={faArrowUpRightFromSquare} />
