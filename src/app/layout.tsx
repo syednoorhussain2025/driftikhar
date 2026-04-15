@@ -1,5 +1,5 @@
 // src/app/layout.tsx
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Lato, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "@/lib/fontawesome";
@@ -9,11 +9,16 @@ import Script from "next/script";
 export const metadata: Metadata = {
   title: "Dr Iftikhar",
   description: "Health records and dashboard",
-  themeColor: "#ffffff",
-  viewport: { width: "device-width", initialScale: 1, viewportFit: "cover" },
   appleWebApp: { capable: true, statusBarStyle: "default" },
-  colorScheme: "light",
   formatDetection: { telephone: false, address: false, email: false },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#ffffff",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  colorScheme: "light",
 };
 
 const lato = Lato({
