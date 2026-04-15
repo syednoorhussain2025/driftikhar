@@ -95,15 +95,19 @@ export default function AdminHome() {
       })
     );
 
-    // Query 2: patient_demographics by full_name
-    const { data: byName, error: e2 } = await supabase
-      .from("patient_demographics")
-      .select("patient_id, full_name, city")
-      .ilike("full_name", `%${term}%`);
-    if (e2) {
-      setLoadingList(false);
-      alert(e2.message);
-      return;
+    // Query 2: patient_demographics by full_name (skip on empty term to avoid RLS recursion)
+    let byName: any[] = [];
+    if (term.trim()) {
+      const { data: byNameData, error: e2 } = await supabase
+        .from("patient_demographics")
+        .select("patient_id, full_name, city")
+        .ilike("full_name", `%${term}%`);
+      if (e2) {
+        setLoadingList(false);
+        alert(e2.message);
+        return;
+      }
+      byName = byNameData || [];
     }
 
     // Query 3: fetch demographics for all patients found by code
@@ -123,7 +127,7 @@ export default function AdminHome() {
     }
 
     // Merge name-search results
-    (byName || []).forEach((d: any) => {
+    byName.forEach((d: any) => {
       if (map.has(d.patient_id)) return; // already have it
       map.set(d.patient_id, {
         id: d.patient_id,
