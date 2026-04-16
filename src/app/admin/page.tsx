@@ -28,6 +28,8 @@ function fmt(n: number, d = 1) {
   return Number.isFinite(n) ? n.toFixed(d) : "—";
 }
 
+const PAGE_SIZE = 20;
+
 /* ----------------------------- Page ------------------------------ */
 export default function AdminHome() {
   const router = useRouter();
@@ -36,6 +38,7 @@ export default function AdminHome() {
   const [q, setQ] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
   const [loadingList, setLoadingList] = useState(false);
+  const [page, setPage] = useState(1);
 
   // These are still used to compute the quick stats if you want to keep the panel,
   // but the “View record” now routes to /admin/patient/[id]
@@ -153,8 +156,12 @@ export default function AdminHome() {
     }
 
     setRows(Array.from(map.values()));
+    setPage(1);
     setLoadingList(false);
   }
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const pageRows = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   function goToPatient(p: Row) {
     // Navigate into the admin patient shell (tabs)
@@ -237,7 +244,7 @@ export default function AdminHome() {
               )}
 
               {!loadingList &&
-                rows.map((r) => (
+                pageRows.map((r) => (
                   <div
                     key={r.id}
                     className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
@@ -267,6 +274,39 @@ export default function AdminHome() {
                   </div>
                 ))}
             </div>
+
+            {/* Pagination */}
+            {!loadingList && rows.length > PAGE_SIZE && (
+              <div className="flex items-center justify-between border-t px-4 py-3">
+                <div className="text-sm text-slate-600">
+                  Showing{" "}
+                  <span className="font-medium">
+                    {(page - 1) * PAGE_SIZE + 1}–
+                    {Math.min(page * PAGE_SIZE, rows.length)}
+                  </span>{" "}
+                  of <span className="font-medium">{rows.length}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+                  >
+                    ← Prev
+                  </button>
+                  <span className="text-sm text-slate-600">
+                    {page} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+                  >
+                    Next →
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
         </>
       </main>
