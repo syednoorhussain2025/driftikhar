@@ -107,7 +107,7 @@ export default function Header({
             {showBurger && (
               <button
                 type="button"
-                className="lg:hidden shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-md hover:bg-slate-100"
+                className="lg:hidden shrink-0 z-10 relative inline-flex h-10 w-10 items-center justify-center rounded-md hover:bg-slate-100"
                 aria-label="Open menu"
                 onClick={openSidebar}
               >
@@ -119,7 +119,7 @@ export default function Header({
               </button>
             )}
 
-            <Link href="/" className="group flex min-w-0 items-center gap-2">
+            <Link href="/" className="group flex min-w-0 items-center gap-2 relative z-0">
               <span
                 aria-hidden
                 className="shrink-0 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--brand-blue,#1e3a8a)] shadow-sm"
