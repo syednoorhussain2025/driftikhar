@@ -72,7 +72,7 @@ export default function DashboardLayout({
       {/* Shell: isolated stacking context + overscroll containment + no tap highlight/selection */}
       <div
         id="dashboard-shell"
-        className="min-h-screen isolate bg-[#f5f7fb] lg:pl-72"
+        className="min-h-screen bg-[#f5f7fb] lg:pl-72"
         style={{
           overscrollBehaviorY: "contain",
           WebkitTapHighlightColor: "transparent",

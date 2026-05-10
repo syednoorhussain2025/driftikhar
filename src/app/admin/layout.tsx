@@ -24,7 +24,7 @@ export default function AdminLayout({
   }, [pathname]);
 
   return (
-    <div className="min-h-screen isolate bg-[#f5f7fb] overflow-x-hidden">
+    <div className="min-h-screen bg-[#f5f7fb] overflow-x-hidden">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="min-w-0">{children}</div>
     </div>
