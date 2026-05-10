@@ -143,17 +143,9 @@ export default function Header({
             </div>
           </div>
 
-          {/* Right — hidden on mobile when burger is shown (dashboard/admin) */}
-          <div className={`flex items-center gap-1.5 sm:gap-2.5 ${showBurger ? "hidden lg:flex" : "flex"}`}>
-            <button
-              onClick={() => router.push("/")}
-              className={linkBtn}
-              title="Home"
-            >
-              <i className={`fas fa-house ${linkIcon}`} />
-              <span className="hidden sm:inline">Home</span>
-            </button>
-
+          {/* Right */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5">
+            {/* Admin button always visible on mobile for admins */}
             {email && role === "admin" && (
               <button
                 onClick={() => router.push("/admin")}
@@ -165,10 +157,20 @@ export default function Header({
               </button>
             )}
 
+            {/* Home + profile hidden on mobile when burger is shown */}
+            <button
+              onClick={() => router.push("/")}
+              className={`${linkBtn} ${showBurger ? "hidden lg:inline-flex" : ""}`}
+              title="Home"
+            >
+              <i className={`fas fa-house ${linkIcon}`} />
+              <span className="hidden sm:inline">Home</span>
+            </button>
+
             {loading ? (
-              <div className="h-8 w-28 animate-pulse rounded-lg bg-slate-200" />
+              <div className={`h-8 w-28 animate-pulse rounded-lg bg-slate-200 ${showBurger ? "hidden lg:block" : ""}`} />
             ) : email ? (
-              <div className="relative" ref={profileRef}>
+              <div className={`relative ${showBurger ? "hidden lg:block" : ""}`} ref={profileRef}>
                 <button
                   onClick={() => setMenuOpen((v) => !v)}
                   className={linkBtn}
