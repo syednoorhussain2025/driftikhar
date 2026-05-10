@@ -116,7 +116,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   /* ---------- Mobile drawer ---------- */
   const MobileDrawer = (
     <div
-      className={`fixed inset-0 z-50 lg:hidden transition-[visibility] ${
+      className={`fixed inset-0 z-[60] lg:hidden transition-[visibility] ${
         isOpen ? "visible" : "invisible"
       }`}
     >
