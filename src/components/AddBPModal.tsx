@@ -166,10 +166,10 @@ export default function AddBPModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, saving, onClose]);
 
-  // Autofocus first input when open
+  // Autofocus systolic input (not date/time, which opens native picker on mobile)
   useEffect(() => {
     if (!open) return;
-    dialogRef.current?.querySelector<HTMLInputElement>("input")?.focus();
+    dialogRef.current?.querySelector<HTMLInputElement>("input[type='number']")?.focus();
   }, [open]);
 
   // -------------------- actions --------------------

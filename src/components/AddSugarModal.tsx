@@ -133,9 +133,9 @@ export default function AddSugarModal({
     return () => overlay?.removeEventListener("mousedown", onClick);
   }, [onClose, submitting]);
 
-  // autofocus first input
+  // autofocus the sugar value input (not the date, which opens native picker on mobile)
   useEffect(() => {
-    dialogRef.current?.querySelector<HTMLInputElement>("input")?.focus();
+    dialogRef.current?.querySelector<HTMLInputElement>("input[type='number']")?.focus();
   }, []);
 
   async function handleSave() {
