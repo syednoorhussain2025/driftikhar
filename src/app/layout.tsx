@@ -77,7 +77,12 @@ export default function RootLayout({
           style={{ overscrollBehaviorY: "contain" }}
         >
           <ClientOnlyHeader />
-          <Toaster position="top-center" richColors closeButton />
+          <Toaster
+            position="bottom-center"
+            theme="dark"
+            closeButton
+            toastOptions={{ style: { fontSize: "13px", padding: "8px 14px" } }}
+          />
           <main>{children}</main>
         </div>
 
