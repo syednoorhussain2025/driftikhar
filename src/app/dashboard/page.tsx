@@ -382,18 +382,16 @@ export default function DashboardPage() {
                 </span>
               </div>
 
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-semibold text-slate-900 break-words">
-                  Welcome{name ? `, ${name}` : ""}
-                </h1>
+              <h1 className="mt-2 text-2xl font-semibold text-slate-900 break-words">
+                Welcome{name ? `, ${name}` : ""}
                 <a
                   href="/dashboard/account"
-                  className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-2.5 py-0.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                  className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-2.5 py-0.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors align-middle ml-2"
                 >
                   <i className="fas fa-pen text-[10px]" />
                   Edit Profile
                 </a>
-              </div>
+              </h1>
 
               <div className="mt-2 flex flex-wrap gap-2 text-xs">
                 <span className="rounded-full bg-amber-50 px-2 py-0.5 ring-1 ring-amber-200 text-amber-800">
