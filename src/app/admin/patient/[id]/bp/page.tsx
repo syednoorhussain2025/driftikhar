@@ -229,86 +229,96 @@ export default function AdminBloodPressurePage() {
       </div>
 
       {/* List Body */}
-      <div className="bg-white">
-        {/* Table-like header row */}
-        <div className="grid grid-cols-12 gap-2 px-3 py-2 border-b border-slate-200 text-sm font-medium text-slate-600">
-          <div className="col-span-4">Date</div>
-          <div className="col-span-3">Reading</div>
-          <div className="col-span-4">Note</div>
-          <div className="col-span-1 text-right">Actions</div>
-        </div>
-
-        {loading ? (
-          <div className="p-4">
-            <div className="animate-pulse space-y-2">
-              <div className="h-4 bg-slate-200 rounded w-3/4" />
-              <div className="h-4 bg-slate-200 rounded w-2/3" />
-              <div className="h-4 bg-slate-200 rounded w-1/2" />
-            </div>
+      {loading ? (
+        <div className="bg-white p-4">
+          <div className="animate-pulse space-y-2">
+            <div className="h-4 bg-slate-200 rounded w-3/4" />
+            <div className="h-4 bg-slate-200 rounded w-2/3" />
+            <div className="h-4 bg-slate-200 rounded w-1/2" />
           </div>
-        ) : items.length === 0 ? (
-          <div className="p-4 text-sm text-slate-600">No readings found.</div>
-        ) : (
-          <ul>
+        </div>
+      ) : items.length === 0 ? (
+        <div className="bg-white p-4 text-sm text-slate-600">No readings found.</div>
+      ) : (
+        <>
+          {/* Mobile cards */}
+          <div className="flex flex-col gap-3 sm:hidden mt-3">
             {items.map((r) => {
               const { dateStr, timeStr } = formatDateTime(r.datetime_utc);
               return (
-                <li
+                <div
                   key={r.id}
-                  className="grid grid-cols-12 gap-2 px-3 py-2 items-center border-b border-slate-100 hover:bg-slate-50 cursor-pointer"
-                  onClick={() => {
-                    setSelectedReading(r);
-                    setAddOpen(true);
-                  }}
-                  title="Click to edit this reading"
+                  className="flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200/60 cursor-pointer"
+                  onClick={() => { setSelectedReading(r); setAddOpen(true); }}
                 >
-                  {/* Date column */}
-                  <div className="col-span-4">
-                    <div className="text-sm font-medium text-slate-900">
-                      {dateStr}
+                  <div className="min-w-0">
+                    <div className="text-xs text-slate-500">{dateStr} · {timeStr}</div>
+                    <div className="mt-0.5 text-xl font-bold tabular-nums text-slate-900">
+                      {r.systolic}/{r.diastolic} <span className="text-xs font-normal text-slate-500">mmHg</span>
                     </div>
-                    <div className="text-xs text-slate-600">{timeStr}</div>
+                    {r.note && <div className="mt-1 text-xs text-slate-600 line-clamp-1">{r.note}</div>}
                   </div>
-
-                  {/* Reading column */}
-                  <div className="col-span-3">
-                    <div className="text-base font-bold text-slate-800">
-                      {r.systolic}/{r.diastolic}{" "}
-                      <span className="text-sm font-semibold">mmHg</span>
-                    </div>
-                  </div>
-
-                  {/* Note column */}
-                  <div className="col-span-4">
-                    <div className="text-sm text-slate-700 line-clamp-2">
-                      {r.note ? (
-                        r.note
-                      ) : (
-                        <span className="text-slate-400">—</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="col-span-1 flex justify-end">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(r.id);
-                      }}
-                      className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-md border border-slate-300 text-slate-800 hover:bg-slate-100"
-                      title="Delete"
-                    >
-                      <FontAwesomeIcon icon={faTrash} className="w-3.5 h-3.5" />
-                      Delete
-                    </button>
-                  </div>
-                </li>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDelete(r.id); }}
+                    className="ml-3 shrink-0 rounded-full p-2 text-slate-400 hover:bg-red-100 hover:text-red-600 focus:outline-none"
+                    title="Delete"
+                  >
+                    <FontAwesomeIcon icon={faTrash} className="w-4 h-4" />
+                  </button>
+                </div>
               );
             })}
-          </ul>
-        )}
-      </div>
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden sm:block bg-white">
+            <div className="grid grid-cols-12 gap-2 px-3 py-2 border-b border-slate-200 text-sm font-medium text-slate-600">
+              <div className="col-span-4">Date</div>
+              <div className="col-span-3">Reading</div>
+              <div className="col-span-4">Note</div>
+              <div className="col-span-1 text-right">Actions</div>
+            </div>
+            <ul>
+              {items.map((r) => {
+                const { dateStr, timeStr } = formatDateTime(r.datetime_utc);
+                return (
+                  <li
+                    key={r.id}
+                    className="grid grid-cols-12 gap-2 px-3 py-2 items-center border-b border-slate-100 hover:bg-slate-50 cursor-pointer"
+                    onClick={() => { setSelectedReading(r); setAddOpen(true); }}
+                    title="Click to edit this reading"
+                  >
+                    <div className="col-span-4">
+                      <div className="text-sm font-medium text-slate-900">{dateStr}</div>
+                      <div className="text-xs text-slate-600">{timeStr}</div>
+                    </div>
+                    <div className="col-span-3">
+                      <div className="text-base font-bold text-slate-800">
+                        {r.systolic}/{r.diastolic} <span className="text-sm font-semibold">mmHg</span>
+                      </div>
+                    </div>
+                    <div className="col-span-4">
+                      <div className="text-sm text-slate-700 line-clamp-2">
+                        {r.note ? r.note : <span className="text-slate-400">—</span>}
+                      </div>
+                    </div>
+                    <div className="col-span-1 flex justify-end">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDelete(r.id); }}
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-md border border-slate-300 text-slate-800 hover:bg-slate-100"
+                        title="Delete"
+                      >
+                        <FontAwesomeIcon icon={faTrash} className="w-3.5 h-3.5" />
+                        Delete
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </>
+      )}
 
       {/* Pagination */}
       <div className="flex items-center justify-between gap-3 py-3 border-t border-slate-200 bg-white">
