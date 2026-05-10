@@ -143,8 +143,8 @@ export default function Header({
             </div>
           </div>
 
-          {/* Right */}
-          <div className="flex items-center gap-1.5 sm:gap-2.5">
+          {/* Right — hidden on mobile when burger is shown (dashboard/admin) */}
+          <div className={`flex items-center gap-1.5 sm:gap-2.5 ${showBurger ? "hidden lg:flex" : "flex"}`}>
             <button
               onClick={() => router.push("/")}
               className={linkBtn}
