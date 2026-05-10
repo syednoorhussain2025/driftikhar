@@ -103,7 +103,7 @@ export default function Header({
       <div className="mx-auto max-w-7xl px-4">
         <div className="flex items-center justify-between gap-4 py-2">
           {/* Left */}
-          <div className="flex min-w-0 items-center gap-3">
+          <div className="flex min-w-0 items-center gap-2">
             {showBurger && (
               <button
                 type="button"
@@ -119,18 +119,18 @@ export default function Header({
               </button>
             )}
 
-            <Link href="/" className="group flex items-center gap-3">
+            <Link href="/" className="group flex min-w-0 items-center gap-2">
               <span
                 aria-hidden
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--brand-blue,#1e3a8a)] shadow-sm"
+                className="shrink-0 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--brand-blue,#1e3a8a)] shadow-sm"
               >
                 <img src={STETHO_SVG} alt="" className="h-5 w-5 invert" />
               </span>
-              <span className="flex min-w-0 flex-col items-end">
-                <span className="truncate text-lg font-semibold text-[var(--brand-blue,#1e3a8a)] leading-none">
+              <span className="flex min-w-0 flex-col">
+                <span className="truncate text-base font-semibold text-[var(--brand-blue,#1e3a8a)] leading-none">
                   Dr Iftikhar&apos;s Diabetes Clinic
                 </span>
-                <em className="mt-[5px] text-[12px] italic text-slate-600 leading-none">
+                <em className="mt-[4px] text-[11px] italic text-slate-600 leading-none truncate">
                   Pakistan&apos;s Premier Diabetes Center
                 </em>
               </span>
@@ -145,7 +145,7 @@ export default function Header({
           </div>
 
           {/* Right */}
-          <div className="flex items-center gap-1.5 sm:gap-2.5">
+          <div className="shrink-0 flex items-center gap-1.5 sm:gap-2.5">
             {/* Admin button always visible on mobile for admins */}
             {email && role === "admin" && (
               <button
