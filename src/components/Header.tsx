@@ -107,13 +107,14 @@ export default function Header({
             {showBurger && (
               <button
                 type="button"
-                className="lg:hidden inline-flex h-10 w-10 items-center justify-center rounded-md hover:bg-slate-100"
+                className="lg:hidden shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-md hover:bg-slate-100"
                 aria-label="Open menu"
                 onClick={openSidebar}
               >
                 <FontAwesomeIcon
                   icon={faBars}
-                  className="text-[var(--brand-blue,#1e3a8a)] text-2xl"
+                  size="xl"
+                  className="text-[var(--brand-blue,#1e3a8a)]"
                 />
               </button>
             )}
