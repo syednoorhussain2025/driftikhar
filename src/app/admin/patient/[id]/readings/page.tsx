@@ -197,56 +197,73 @@ const ReadingsTable = ({
   onDelete: (id: string) => void;
   onRowClick: (r: any) => void;
 }) => (
-  <div className="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/60">
-    <table className="min-w-full text-left text-sm">
-      <thead className="border-b border-slate-200 bg-slate-50/70 text-slate-600">
-        <tr>
-          <th className="px-6 py-3 font-semibold">Date & Time</th>
-          <th className="px-6 py-3 font-semibold">Reading (mg/dL)</th>
-          <th className="px-6 py-3 font-semibold">Type</th>
-          <th className="relative px-6 py-3">
-            <span className="sr-only">Actions</span>
-          </th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-slate-200">
-        {readings.map((r) => (
-          <tr
-            key={r.id}
-            className="transition-colors hover:bg-gray-100 cursor-pointer"
-            onClick={() => onRowClick(r)}
-          >
-            <td className="whitespace-nowrap px-6 py-4 text-slate-700">
-              {dateFmt.format(new Date(r.datetime_utc))}
-            </td>
-            <td className="whitespace-nowrap px-6 py-4">
-              <span className="text-base font-bold tabular-nums text-slate-900">
-                {r.mgdl}
-              </span>
-            </td>
-            <td className="whitespace-nowrap px-6 py-4">
+  <>
+    {/* Mobile cards */}
+    <div className="flex flex-col gap-3 sm:hidden">
+      {readings.map((r) => (
+        <div
+          key={r.id}
+          className="flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200/60 cursor-pointer"
+          onClick={() => onRowClick(r)}
+        >
+          <div className="min-w-0">
+            <div className="text-xs text-slate-500">{dateFmt.format(new Date(r.datetime_utc))}</div>
+            <div className="mt-0.5 text-xl font-bold tabular-nums text-slate-900">{r.mgdl} <span className="text-xs font-normal text-slate-500">mg/dL</span></div>
+            <div className="mt-1">
               <span className={TYPE_PILL_CLASS}>{prettyType(r.tag)}</span>
-            </td>
-            <td
-              className="whitespace-nowrap px-6 py-4 text-right"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onClick={() => onDelete(r.id)}
-                disabled={!!deleting[r.id]}
-                className="rounded-full p-2 text-slate-400 hover:bg-red-100 hover:text-red-600 disabled:opacity-50 focus:outline-none"
-              >
-                <FontAwesomeIcon
-                  icon={faTrash}
-                  className={deleting[r.id] ? "animate-spin" : ""}
-                />
-              </button>
-            </td>
+            </div>
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(r.id); }}
+            disabled={!!deleting[r.id]}
+            className="ml-3 shrink-0 rounded-full p-2 text-slate-400 hover:bg-red-100 hover:text-red-600 disabled:opacity-50 focus:outline-none"
+          >
+            <FontAwesomeIcon icon={faTrash} className={deleting[r.id] ? "animate-spin" : ""} />
+          </button>
+        </div>
+      ))}
+    </div>
+
+    {/* Desktop table */}
+    <div className="hidden sm:block overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/60">
+      <table className="min-w-full text-left text-sm">
+        <thead className="border-b border-slate-200 bg-slate-50/70 text-slate-600">
+          <tr>
+            <th className="px-6 py-3 font-semibold">Date & Time</th>
+            <th className="px-6 py-3 font-semibold">Reading (mg/dL)</th>
+            <th className="px-6 py-3 font-semibold">Type</th>
+            <th className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
           </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
+        </thead>
+        <tbody className="divide-y divide-slate-200">
+          {readings.map((r) => (
+            <tr
+              key={r.id}
+              className="transition-colors hover:bg-gray-100 cursor-pointer"
+              onClick={() => onRowClick(r)}
+            >
+              <td className="whitespace-nowrap px-6 py-4 text-slate-700">{dateFmt.format(new Date(r.datetime_utc))}</td>
+              <td className="whitespace-nowrap px-6 py-4">
+                <span className="text-base font-bold tabular-nums text-slate-900">{r.mgdl}</span>
+              </td>
+              <td className="whitespace-nowrap px-6 py-4">
+                <span className={TYPE_PILL_CLASS}>{prettyType(r.tag)}</span>
+              </td>
+              <td className="whitespace-nowrap px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                <button
+                  onClick={() => onDelete(r.id)}
+                  disabled={!!deleting[r.id]}
+                  className="rounded-full p-2 text-slate-400 hover:bg-red-100 hover:text-red-600 disabled:opacity-50 focus:outline-none"
+                >
+                  <FontAwesomeIcon icon={faTrash} className={deleting[r.id] ? "animate-spin" : ""} />
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </>
 );
 
 /* ----------------------------- Page ----------------------------- */
