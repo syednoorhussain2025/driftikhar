@@ -113,7 +113,7 @@ export default function Header({
               >
                 <FontAwesomeIcon
                   icon={faBars}
-                  className="text-[var(--brand-blue,#1e3a8a)] text-lg"
+                  className="text-[var(--brand-blue,#1e3a8a)] text-2xl"
                 />
               </button>
             )}
