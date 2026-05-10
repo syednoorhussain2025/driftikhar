@@ -85,10 +85,9 @@ export default function Header({
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-blue,#1e3a8a)]/40";
   const linkIcon = "text-orange-500";
 
-  // show burger only in protected areas and when user logged in
+  // show burger only in protected areas (auth is enforced by middleware, not needed here)
   const showBurger =
-    !!email &&
-    (pathname.startsWith("/dashboard") || pathname.startsWith("/admin"));
+    pathname.startsWith("/dashboard") || pathname.startsWith("/admin");
 
   // Fallback: if no prop provided (global header), fire a window event the dashboard listens for
   const openSidebar = () => {
