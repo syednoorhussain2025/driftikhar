@@ -83,8 +83,8 @@ export default function AdminPatientLayout({
     : patient?.full_name ?? "Unnamed patient";
 
   return (
-    <div className="min-h-screen bg-[#f5f7fb]">
-      <main className="mx-auto max-w-7xl px-4 py-6">
+    <div className="min-h-screen bg-[#f5f7fb] overflow-x-hidden">
+      <main className="mx-auto max-w-7xl px-4 py-6 min-w-0">
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>

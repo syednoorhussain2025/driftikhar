@@ -410,7 +410,7 @@ export default function AdminPatientDashboard() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setShowAddBP(true)}
               className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -611,7 +611,7 @@ export default function AdminPatientDashboard() {
         <div className="space-y-4">
           {/* Time selector (1:1) */}
           <section className="rounded-2xl bg-amber-50 p-4 shadow-sm ring-1 ring-amber-200">
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex flex-wrap items-center gap-2 text-sm">
               <div className="font-medium text-amber-900">Time range</div>
               {[30, 60, 90, 180, 365].map((d) => (
                 <button
