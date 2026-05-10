@@ -149,11 +149,11 @@ export default function Header({
             {email && role === "admin" && (
               <button
                 onClick={() => router.push("/admin")}
-                className={linkBtn}
+                className="inline-flex items-center gap-1.5 rounded-full bg-orange-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-orange-600 transition-colors"
                 title="Admin"
               >
-                <i className={`fas fa-user-shield ${linkIcon}`} />
-                <span className="hidden sm:inline">Admin</span>
+                <i className="fas fa-user-shield" />
+                Admin
               </button>
             )}
 
