@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { toast } from "sonner";
 import { usePatient } from "../_context/PatientContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -180,7 +181,12 @@ export default function AccountPage() {
       .from("patient_demographics")
       .upsert(updates as any, { onConflict: "patient_id" });
 
-    if (upErr) setError(upErr.message);
+    if (upErr) {
+      setError(upErr.message);
+      toast.error("Failed to save profile.");
+    } else {
+      toast.success("Profile updated.");
+    }
     setSaving(false);
   }
 

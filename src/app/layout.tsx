@@ -5,6 +5,7 @@ import "./globals.css";
 import "@/lib/fontawesome";
 import ClientOnlyHeader from "@/components/ClientOnlyHeader";
 import Script from "next/script";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "Dr Iftikhar",
@@ -76,6 +77,7 @@ export default function RootLayout({
           style={{ overscrollBehaviorY: "contain" }}
         >
           <ClientOnlyHeader />
+          <Toaster position="top-center" richColors closeButton />
           <main>{children}</main>
         </div>
 

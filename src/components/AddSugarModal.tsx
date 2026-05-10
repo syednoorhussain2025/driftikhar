@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { toast } from "sonner";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faXmark,
@@ -186,9 +187,11 @@ export default function AddSugarModal({
     setSubmitting(false);
     if (err) {
       setError(err.message || "Failed to save reading.");
+      toast.error("Failed to save reading.");
       return;
     }
 
+    toast.success(isEdit ? "Reading updated." : "Reading saved.");
     onSaved?.();
     onClose();
   }

@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { toast } from "sonner";
 import AddBPModal from "@/components/AddBPModal";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -113,10 +114,10 @@ export default function AdminBloodPressurePage() {
       .delete()
       .eq("id", id);
     if (delErr) {
-      alert(delErr.message);
+      toast.error(delErr.message || "Failed to delete reading.");
       return;
     }
-    // Reload current page (adjust if last item removed)
+    toast.success("BP reading deleted.");
     const remaining = total - 1;
     const newTotalPages = Math.max(1, Math.ceil(remaining / PAGE_SIZE));
     if (page > newTotalPages) setPage(newTotalPages);

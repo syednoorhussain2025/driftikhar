@@ -11,6 +11,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { toast } from "sonner";
 
 /* ----------------------------- Types ----------------------------- */
 
@@ -180,7 +181,8 @@ export function PatientProvider({ children }: { children: React.ReactNode }) {
   const deleteReading = useCallback(
     async (id: string) => {
       if (!patientId) return;
-      if (!confirm("Delete this reading? This cannot be undone.")) return;
+      const confirmed = window.confirm("Delete this reading? This cannot be undone.");
+      if (!confirmed) return;
 
       setDeleting((s) => ({ ...s, [id]: true }));
 
@@ -192,11 +194,12 @@ export function PatientProvider({ children }: { children: React.ReactNode }) {
       if (!mountedRef.current) return;
 
       if (error) {
-        alert(error.message);
+        toast.error(error.message || "Failed to delete reading.");
         setDeleting(({ [id]: _skip, ...rest }) => rest);
         return;
       }
 
+      toast.success("Reading deleted.");
       setReadings((prev) => prev.filter((r) => r.id !== id));
       setDeleting(({ [id]: _skip, ...rest }) => rest);
     },

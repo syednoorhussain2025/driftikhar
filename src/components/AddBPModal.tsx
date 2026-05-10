@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { toast } from "sonner";
 
 type BPReading = {
   id: string;
@@ -219,9 +220,11 @@ export default function AddBPModal({
     setSaving(false);
     if (dbErr) {
       setError(dbErr.message);
+      toast.error("Failed to save blood pressure reading.");
       return;
     }
 
+    toast.success(isEdit ? "BP reading updated." : "BP reading saved.");
     onAdded?.();
     onClose();
   }

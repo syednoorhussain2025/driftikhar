@@ -3,6 +3,7 @@
 import { useParams } from "next/navigation";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { toast } from "sonner";
 import AddSugarModal from "@/components/AddSugarModal";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -86,8 +87,9 @@ function useAdminReadings(patientId: string) {
         .eq("id", id);
       if (error) throw error;
       setReadings((r) => r.filter((i) => i.id !== id));
+      toast.success("Reading deleted.");
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || "Failed to delete reading.");
     } finally {
       setDeleting((d) => {
         const copy = { ...d };
@@ -379,7 +381,13 @@ export default function AdminPatientReadings() {
 
         <section>
           {isLoading ? (
-            <div className="py-20 text-center text-slate-500">Loading...</div>
+            <div className="py-20 flex flex-col items-center gap-3 text-slate-400">
+              <svg className="h-8 w-8 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+              </svg>
+              <span className="text-sm">Loading readings…</span>
+            </div>
           ) : filteredReadings.length > 0 ? (
             <>
               <ReadingsTable
